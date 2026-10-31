@@ -105,7 +105,7 @@ export default previousFactory => options => wrapMethods(previousFactory(options
 | 数据仓 | `data.messages`、`data.memory`、`data.sessions`、`data.usage`、`data.reminders`、`data.stickers` |
 | 主业务链 | `core.ingest`、`core.send`、`core.orchestrator`、`core.agentRunner`、`llm.complete`、`llm.target` |
 | 提示词 | `core.prompt.system`、`core.prompt.user`、`core.prompt.pastState`、`core.prompt.anchor`、`core.prompt.persona` |
-| 业务策略 | `core.tools.bundle`、`core.media.forward`、`core.events`、`core.wake.resolve`、`core.memory.consolidate`、`core.text.plain`、`core.text.split`、`core.reply.rescue`、`core.tools.parseInline`、`core.session.retryable` |
+| 业务策略 | `core.tools.bundle`、`core.media.forward`、`core.events`、`core.wake.resolve`、`core.memory.consolidate`、`core.text.plain`、`core.text.split`、`core.reply.rescue`、`core.tools.parseInline`、`core.session.retryable`、`core.persona.write` |
 | 控制台 | `console.routes`、`console.panels`、`console.panelRoutes`、`console.sse`、`console.usageCost`、`console.modelPrices`、`console.peakSchedule` |
 
 每项函数签名与组件表所导出的具名默认函数一致。构造型组件的选项包含 `lifecycle`：`signal` 在本代关闭时中止，`onStop(fn)` 登记清理并返回撤销登记函数；清理按逆序执行，重复关闭只执行一次，一项失败仍继续清理其余项并报告错误。原实现已经拥有的 stop/close 方法仍按原合同执行；追加的独立资源应通过生命周期登记，避免重复释放。
@@ -113,6 +113,8 @@ export default previousFactory => options => wrapMethods(previousFactory(options
 默认装配在取得带有既定 `stop/close/stopAll` 合同的基础服务时，立即登记一次性清理，后续构造失败也会等待这些资源回收。数据重置保留 HTTP 与 SSE 以交付响应和诊断，最终退出时才释放。服务宿主停止时撤销自己订阅的配置、能力与总线监听，单独重启该宿主会重新绑定一次。配置、仓库和编排器的重置保护由宿主自己的 facade 承载，不改写所选实现；只读对象和带私有字段的实现均可使用相同接口。
 
 协议事件交给所选 `core.events` 时附带提供者的 `signal` 与 `current()`。默认业务在名单查询之前捕获账号/提供者代际，异步返回后再核验；消息、拍一拍和自动媒体转发都保留该取消关系。提供者切换或停止后，旧事件不得写入或借新提供者发送。替换业务实现应沿用这两个上下文字段检查异步工作。
+
+2026-10-31 起消息链多两段宿主能力。**唤醒前拦截**：`core.events` 在消息入库后、`onIncoming` 前按注册序咨询 `ingest.intercept` 提供者（载荷 `{chatKey, entry 脱敏副本, markRead(), signal}`），认领即标已读沉历史、不排唤醒不建会话；不认领/提供者异常/10 秒超时一律放行，全局暂停不调用；拍一拍不走拦截。**好友申请**：`friend_request` 事件经 `capability.claimAsync('friend.request', {kind,userId,comment,flag,signal})` 确定性分发，按注册序第一个认领者获胜，无人认领只记日志、宿主绝不自动同意；协议动作 `transport.actions.setFriendAddRequest({flag,approve})` 的 flag 为 OneBot 不透明串，原样回传。**插件人格**：`core.persona.write` 提供插件侧 `persona.write`（write/select，字段白名单与控制台同一套 `__replace__` 磁盘语义，生效性受 `personaUnified` 门约束并如实返回）与 `persona.read`（无正文摘要），写审计不含正文，scope 分别为用户默认 ask（headless=deny）与默认 allow；`chat.member-info` 复用 moderation.member 暴露群成员身份查询。
 
 提示词、运行器及 LLM 的替换必须进入实际消息处理链及 SDK 调用；禁止保留对旧导入的生产旁路。默认仓替换必须同时服务消息入站、会话编排和控制台。出厂行为不要求第三方实现照搬，但实现必须保持其声明的接口合同。
 

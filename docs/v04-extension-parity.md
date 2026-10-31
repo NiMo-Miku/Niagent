@@ -140,7 +140,7 @@
 | set_group_admin | 缺口 | 无公共群管理写入动作 |
 | set_group_card | 缺口 | 无公共群管理写入动作 |
 | set_group_add_option | 缺口 | 无公共群管理写入动作 |
-| set_friend_add_request | 缺口 | 无公共请求处理动作 |
+| set_friend_add_request | 已补齐（2026-10-31） | `transport.actions.setFriendAddRequest({flag,approve})`（flag 原样回传）；好友申请事件经 `friend.request` 能力确定性分发，官方消费者 plugins/friend-approval |
 | set_group_add_request | 缺口 | 无公共请求处理动作 |
 | upload_group_file | 缺口 | 可发送file段不等价协议群文件管理上传 |
 | upload_private_file | 缺口 | 可发送file段不等价协议私聊文件管理上传 |

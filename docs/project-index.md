@@ -16,10 +16,10 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 
 | 目录/文件 | 规模 | 职责 |
 |---|---|---|
-| `src/` | 121 文件 / ~19.9K 行 | 内核与后端:装配、消息链路、LLM、HTTP/SSE、多账号、协议端托管、群管规则引擎、控制台路由 |
+| `src/` | 123 文件 / ~20.2K 行 | 内核与后端:装配、消息链路、LLM、HTTP/SSE、多账号、协议端托管、群管规则引擎、控制台路由 |
 | `bundled/` | 20 目录 / ~4.9K 行 | 出厂插件(传输、工具、服务)与启动默认组件表 |
 | `ui/` | ~16.7K 行 | 前端:宿主壳 `ui/shell` + 9 个 iframe 沙箱面板 `ui/panels`,原生 ESM 无构建 |
-| `test/` | ~1110 个 .mjs / ~52K 行 | 自研逐进程回归网,M0–M4 分层 |
+| `test/` | 365 个 .mjs / ~50.7K 行 | 自研逐进程回归网,M0–M4 分层 |
 | `docs/` | 74 md + 2 mermaid + 1 json / ~17K 行 | 架构规格、扩展创作、迁移记录、QA 证据 |
 | `website/` | ~39K 行(18MB) | kondius.cn/qq-agent 官网的只读本地镜像 + 动效实验场,不随应用打包 |
 | `scripts/` | ~1.7K 行 + lib | 隐私审计、冒烟、截图、扩展 CLI、有头 QA 夹具(已无 Electron 依赖) |
@@ -44,11 +44,11 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 
 三个会话文档头部均有同一段「2026-10-23 范围更新」声明:专属协议端与便携客户端的安装/启动/登录态迁移已移出项目范围。
 
-## 4. src/ — 内核与后端(121 文件,~19.9K 行)
+## 4. src/ — 内核与后端(123 文件,~20.2K 行)
 
 ### 4.1 启动链
 
-`src/server.js`(35 行,headless 入口)→ `createApplication`(`src/kernel/composition.js:201`,扫描 `overrides/` 组合层,合并到 `bundled/runtime-defaults/components.js` 的 52 个默认组件)→ `createKernel`(`src/kernel/kernel.js:15`,691 行)按固定顺序构造约 40 个命名组件,`kernel.start()` 依次:实例锁 → 迁移检测 → 路由注册 → HTTP listen → 会话改判 → 插件装载 → 价格刷新 → 服务/管理/协议端启动 → 账号恢复。**首次装载(无 config.json)自动生成随机控制台令牌并持久化**(显式写 `server.token:''` = 关闭鉴权)。
+`src/server.js`(35 行,headless 入口)→ `createApplication`(`src/kernel/composition.js:201`,扫描 `overrides/` 组合层,合并到 `bundled/runtime-defaults/components.js` 的 79 个默认组件)→ `createKernel`(`src/kernel/kernel.js:15`,691 行)按固定顺序构造约 40 个命名组件,`kernel.start()` 依次:实例锁 → 迁移检测 → 路由注册 → HTTP listen → 会话改判 → 插件装载 → 价格刷新 → 服务/管理/协议端启动 → 账号恢复。**首次装载(无 config.json)自动生成随机控制台令牌并持久化**(显式写 `server.token:''` = 关闭鉴权)。
 
 ### 4.2 src/kernel/(55 文件)— 核心部件
 
@@ -58,6 +58,7 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 
 | 文件 | 行数 | 说明 |
 |---|---|---|
+| `persona-write.js` | 144 | 插件人格写入事务与只读摘要(2026-10-31 任务一):write/select 白名单校验+`personaByChat __replace__` 读改写+审计(无正文);read/resolve 摘要 |
 | `plugin-loader.js` | ~1215 | 扩展装载器:三类根(bundled/plugins/skills)、目录指纹、热重载(临时副本绕 ESM 缓存,**启动期清扫残留**)、两段闸换版、fs.watch 防抖重扫;清单支持声明式 `configPage`/`panels`;**全库最复杂文件** |
 | `capability.js` | 183 | 能力注册表:provide/consume、6 个多提供者能力协商、管理员 pin、活性探针 |
 | `permissions.js` | 249 | scope 权限闸;捆绑默认 allow、用户插件默认 ask;授权绑定代码指纹,一次性凭据 |
@@ -106,7 +107,7 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 | `memory-tools` | skill.json | 70 | memory_append/query/remove | 消费 `data.memory` |
 | `community` | plugin.json | 164 | `community.client` | 云端屏蔽名单 5 分钟同步 + 金句/反馈投稿通道 |
 | `voice-to-text` | skill.json | 120 | `media.transcribe` | OpenAI 兼容 ASR;默认停用 |
-| `runtime-defaults` | **无清单** | 253 | 52 个默认组件工厂表 | 非插件;被 loader 特判跳过 |
+| `runtime-defaults` | **无清单** | 167 | 79 个默认组件工厂表 | 非插件;被 loader 特判跳过 |
 | `reminders` | plugin.json | 28 | `reminders.service` | 提醒存储接入宿主运行时 |
 | `llm-dialects` | plugin.json | 86 | `llm.dialect` | 思考模型请求参数方言+拒绝降级 |
 | `hello` | skill.json | 35 | `hello_say` | SDK 活样例,默认停用 |
@@ -230,7 +231,7 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 - 运行器:`run-all.mjs`(`npm test`)= **run-m3 + run-m4**,逐文件 spawnSync,240s/120s 超时。M0–M2 链需手动 `node test/run-m2.mjs`(本日已全绿:M0 9/9、M1 15/15、M2 8/8、M4 7/7、smoke 13/13)。
 - 形态:两种风格(自绘断言 `test/helpers.mjs` / `node:test`);224 个 import 内核、约 70 个 playwright-core UI e2e、121 个起真内核、164 个源码静态契约断言。
 - 离线性极强:`ws` mock OneBot、http mock LLM、`page.route()` 拦截、假域名;浏览器测试可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指向 Edge/Chrome。
-- 本日新增:`308-plugin-config-page`(配置页端到端)、`309-prompt-preview`(提示词预览)、`310-persona-write`(插件人格能力)、18/305/25 更新为延续语义。
+- 本日新增:`308-plugin-config-page`(配置页端到端)、`309-prompt-preview`(提示词预览)、`310-persona-write`(插件人格能力)、`311-trpg-dice-ingest-intercept`(唤醒前拦截端到端)、`312-friend-request`+`313-friend-approval-e2e`(好友申请链路),18 新增五条拦截用例。
 - 已知既有失败(HEAD 复现,浏览器环境相关,与当日改动无关):34、116、125、127、244、254、69。
 
 ## 13. website/ — 官网镜像(不随应用打包)
