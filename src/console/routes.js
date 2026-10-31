@@ -138,8 +138,30 @@ function appendProviderModelNames(current, incoming) {
   return { modelNames: { ...(mapping(current) ? current : {}), ...(mapping(incoming) ? incoming : {}) } };
 }
 
+// 用量/会话档案的读缓存：按 mtime+size 失效，稳态请求零重复解析（P1-4：档案大时曾整段阻塞事件循环）。
+const jsonCache = new Map(); // file → { mtimeMs, size, value }
+const JSON_CACHE_MAX = 768;
 function readJson(file, fallback = null) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
+  try {
+    const stat = fs.statSync(file);
+    const cached = jsonCache.get(file);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.value;
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (jsonCache.size >= JSON_CACHE_MAX) jsonCache.delete(jsonCache.keys().next().value);
+    jsonCache.set(file, { mtimeMs: stat.mtimeMs, size: stat.size, value });
+    return value;
+  } catch { jsonCache.delete(file); return fallback; }
+}
+// 目录列表 500ms 微缓存：吸收用量页的密集轮询，readdir 不再每次进内核。
+const dirListCache = new Map(); // dir → { expires, names }
+function listDirCached(dir) {
+  const now = Date.now();
+  const cached = dirListCache.get(dir);
+  if (cached && cached.expires > now) return cached.names;
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch { names = []; }
+  dirListCache.set(dir, { expires: now + 500, names });
+  return names;
 }
 
 function dayKeyOf(ts) {
@@ -197,13 +219,13 @@ function fullSessions(dataDir, sessions) {
     map.set(session.id, full);
   };
   try {
-    for (const name of fs.readdirSync(path.join(dataDir ?? '', 'usage-days'))) {
+    for (const name of listDirCached(path.join(dataDir ?? '', 'usage-days'))) {
       if (!/^\d{4}-\d{2}-\d{2}\.json$/.test(name)) continue;
       const archive = readJson(path.join(dataDir, 'usage-days', name));
       if (archive?.version === 1 && archive.records && typeof archive.records === 'object') for (const record of Object.values(archive.records)) if (record?.id) map.set(record.id, { ...record, _usageArchiveRecord: record, _usageLegacyAggregates: Boolean(archive.legacyAggregates) });
     }
   } catch { /* directory not created yet */ }
-  try { for (const f of fs.readdirSync(path.join(dataDir ?? '', 'sessions'))) if (f.endsWith('.json')) { const s = sessions.peek?.(f.slice(0, -5)) ?? readJson(path.join(dataDir, 'sessions', f)); if (s?.id) mergeCurrent(s); } } catch { /* 目录不可用 */ }
+  try { for (const f of listDirCached(path.join(dataDir ?? '', 'sessions'))) if (f.endsWith('.json')) { const s = sessions.peek?.(f.slice(0, -5)) ?? readJson(path.join(dataDir, 'sessions', f)); if (s?.id) mergeCurrent(s); } } catch { /* 目录不可用 */ }
   for (const s of sessions.listSummaries?.() ?? []) mergeCurrent({ ...s, ...(sessions.peek?.(s.id) ?? {}) });
   return [...map.values()];
 }
@@ -1168,7 +1190,7 @@ export function registerConsoleRoutes(http, deps) {
 
   // R64-R70/R77/R80-R87: session and archive controls.
   http.route('GET', '/api/sessions', async ({ query }) => {
-    const rows=sessions.listSummaries().slice(0,Math.min(1048576,Math.max(1,Number(query.limit)||500))).map(serializeSessionSummary);
+    const rows=sessions.listSummaries().slice(0,Math.min(2000,Math.max(1,Number(query.limit)||500))).map(serializeSessionSummary);
     return {sessions:await withSessionNames(rows)};
   });
   http.route('GET', /^\/api\/sessions\/(?<id>[A-Za-z0-9_-]+)$/, async ({ params }) => {

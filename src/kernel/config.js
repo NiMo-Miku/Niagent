@@ -4,6 +4,7 @@
 // 滑条唯一真相：store.contextSliderPos 缺省 = 100 = 4 档（U-01 终论：显式默认，有意语义）。
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { buildSearchProviderDefaults } from '../../bundled/web-tools/search-policy.js';
 
 export const SECRET_KEY_PATTERN = /(apikey|api_key|accesstoken|access_token|communitykey|cookie|secret|password|privatekey|private_key|^token$)/i;
@@ -229,6 +230,14 @@ export function createConfig({ dataDir, defaults, log = console }) {
       migrateLegacySkills(parsed);
       stripObsolete(parsed);
       data = deepMerge(structuredClone(defaults), parsed);
+    }
+    // P1-1：首次装载（config.json 尚不存在）生成随机控制台令牌并持久化——
+    // 出厂不再存在「零令牌全开」状态；浏览器经 /api/console/bootstrap（仅回环+同源）领取。
+    // 已有配置里显式写 server.token:'' 视为管理员关闭鉴权，尊重不改；损坏兜底路径同理不自动加锁。
+    if (!fs.existsSync(file) && !data.server?.token) {
+      data.server = { ...data.server, token: randomBytes(32).toString('hex') };
+      save(data);
+      log.info?.('已生成随机控制台令牌并写入 config.json（浏览器打开控制台会自动领取；脚本调用请携带该令牌）');
     }
     return data;
   }

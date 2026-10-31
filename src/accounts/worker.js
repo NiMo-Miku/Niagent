@@ -122,9 +122,16 @@ export function startAccountWorker({ runtimeProcess = process, createApplication
     }
   };
   runtimeProcess.on('message', onMessage);
-  const stopSignal = () => { void stop(); }, fatal = () => { send({ type: 'account.error' }); void stop(1); };
+  const stopSignal = () => { void stop(); };
+  // 对齐 server.js：unhandledRejection 只记录（第一现场进账号工作区日志），不得拖垮整个工作区进程。
+  const logCrash = (kind, err) => {
+    const detail = String(err?.stack || err?.message || String(err ?? '')).slice(0, 4000);
+    try { kernel?.log?.error?.(`[worker] ${kind}: ${detail}`); } catch { /* 初始化前无日志可用 */ }
+    console.error(`[account-worker] ${kind}: ${detail}`);
+  };
   for (const signal of ['disconnect', 'SIGINT', 'SIGTERM']) runtimeProcess.once(signal, stopSignal);
-  for (const signal of ['uncaughtException', 'unhandledRejection']) runtimeProcess.on(signal, fatal);
+  runtimeProcess.on('unhandledRejection', (reason) => logCrash('unhandledRejection', reason));
+  runtimeProcess.on('uncaughtException', (err) => { logCrash('uncaughtException', err); send({ type: 'account.error' }); void stop(1); });
   return { stop, get kernel() { return kernel; } };
 }
 

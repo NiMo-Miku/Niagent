@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { constants } from 'node:fs';
+import { appendFileSync, constants, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fork } from 'node:child_process';
@@ -257,8 +257,19 @@ export function createAccountManager({ appRoot, dataDir, config, bus, getPrimary
           QQ_AGENT_MIGRATE_FROM: '', QQ_AGENT_PROTOCOL_DIR: path.join(dirs.workspace, 'protocols') },
         windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
       runtime.child = child;
-      // Never forward worker stdout/configuration into browser events or startup credentials.
-      child.stdout?.resume?.(); child.stderr?.resume?.();
+      // 第一现场诊断写入工作区自己的日志盘（滚动），绝不转发到浏览器事件或连接主进程凭据。
+      const workerLogDir = path.join(dirs.dataDir, 'logs');
+      try { mkdirSync(workerLogDir, { recursive: true }); } catch {}
+      const workerLogFile = path.join(workerLogDir, 'worker.log');
+      const writeWorkerLine = (chunk) => {
+        try {
+          const stat = statSync(workerLogFile);
+          if (stat.size > 1048576) writeFileSync(workerLogFile, `--- rotated ${new Date().toISOString()} ---\n`);
+        } catch { /* 首次写入时创建 */ }
+        try { appendFileSync(workerLogFile, String(chunk)); } catch { /* 日志不得影响运行 */ }
+      };
+      child.stdout?.on?.('data', writeWorkerLine);
+      child.stderr?.on?.('data', writeWorkerLine);
       child.on('message', message => {
         if (runtimes.get(id) !== runtime || message?.generation !== runtime.generation) return;
         if (message.type === 'account.ready') {

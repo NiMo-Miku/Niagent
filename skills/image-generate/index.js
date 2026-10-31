@@ -2,9 +2,9 @@
 //
 // ── 设计要点（为什么这么写）──────────────────────────────────────────────
 //   · Base URL / API Key / 模型 id 全部走配置项，代码里不写死任何地址与密钥
-//   · 联网先声明 permissions: ["web_fetch"]，再用 api.fetch（不是全局 fetch）
+//   · 联网先声明 permissions: ["net.outbound"]，再用 ctx.http.fetch（不是全局 fetch）
 //   · 配置一律在执行时用 cfg() 读；setup 时快照会导致「改了设置不生效」
-//   · 图片交付统一走 ctx.sender.sendImage（自带发送队列 / 限频 / 去重）
+//   · 图片交付统一走 execution.send.sendImage（自带发送队列 / 限频 / 去重）
 //   · available() 必须是同步函数（可用性判定走同步调用链）
 //
 // ── 为什么要把图片「下载回来再发」（实测教训）────────────────────────────
@@ -27,7 +27,7 @@ import path from 'node:path';
 let cfg = () => ({});
 let log = () => {};
 let warn = () => {};
-// api.fetch：只有清单声明了 permissions: ["web_fetch"] 才是真的 fetch。
+// ctx.http.fetch：只有清单声明了 permissions: ["net.outbound"] 才是允许的出站通道。
 // 这是能力引用不是配置，可以 setup 时存；配置仍然每次执行现读。
 let apiFetch = null;
 
@@ -60,22 +60,22 @@ const RESPONSE_FORMATS = ['auto', 'url', 'b64_json'];
  * 必须能一眼区分。没有这行标记就只能靠推理（本次为此绕了好几轮）。
  * 看到这行日志 = 新代码已加载；看不到 = 进程还是旧的，重启即可。
  */
-const BUILD_TAG = 'v1.2.0-local-file-send';
+const BUILD_TAG = 'v1.2.1-sdk-native';
 
-export function setup(api) {
-  cfg = api.config;
-  log = api.log || (() => {});
-  warn = api.warn || (() => {});
-  apiFetch = api.fetch;
+export function setup(ctx) {
+  cfg = () => ctx.config.all();
+  log = (...values) => ctx.log.info(...values);
+  warn = (...values) => ctx.log.warn(...values);
+  apiFetch = (url, init) => ctx.http.fetch(url, init);
   log(`文生图技能已加载（${BUILD_TAG}）`);
 
-  api.registerTool({
+  ctx.registerTool({
     id: 'draw',                      // 注册后实际是 image-generate__draw
     name: '生成图片',
     description: '文生图：把一段画面描述渲染成图片，并直接发到当前会话。当群友说「画一张…」「帮我画个…」「生成一张…的图」「来张…的图」时用它。prompt 要写清主体 + 风格 + 构图/色调；多个画面用 count。图片由本工具直接发出，不需要再调发送工具。',
     category: 'media',
     icon: '🎨',
-    parameters: {
+    params: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: '画面描述（中英文都可以）：主体、风格、构图、色调' },
@@ -84,7 +84,7 @@ export function setup(api) {
       },
       required: ['prompt']
     },
-    async execute(ctx, args) {
+    async execute(args, execution) {
       // ── 1) 先校验参数：模型可能给空值、超长或越界值 ──────────────────────
       const prompt = String(args?.prompt ?? '').trim();
       if (!prompt) return fail('缺少 prompt：请把要画的画面描述写进去');
@@ -133,26 +133,22 @@ export function setup(api) {
         for (const image of ready) {
           try {
             // 优先传本地路径：图已落盘，让协议端自己读文件，body 从 MB 级降到百字节级
-            //（见 sender.sendImage 的注释）。dataUrl 作为回退，协议端不同机/路径不可读时用。
-            await ctx.sender.sendImage(
-              ctx.chatKey,
+            //（见 execution.send.sendImage 的注释）。dataUrl 作为回退，协议端不同机/路径不可读时用。
+            await execution.send.sendImage(
+              execution.chatKey,
               { file: image.filePath, dataUrl: image.dataUrl },
               { note: 'AI绘图' }
             );
             sent += 1;
-            ctx.session?.sent?.push({
-              type: 'image',
-              text: '[图片:AI绘图]',
-              at: new Date().toLocaleTimeString('zh-CN', { hour12: false })
-            });
           } catch (error) {
             // 发送失败时把本地留档路径给出去，省得白画一张
             sendFailed.push(`${humanizeError(error)}（图已存本地：${image.filePath}）`);
           }
         }
         if (sent) {
+          // 会话快照（session.sent）与事件出口（ctx.emit）对用户技能不开放（脱敏副本/白名单），
+          // 聊天页的展示刷新由宿主在发送回执后自行处理。
           log(`生成并发送 ${sent} 张（模型 ${settings.model}${size ? `，尺寸 ${size}` : ''}${retried ? '，重试后成功' : ''}）`);
-          try { ctx.emit?.('session-update', ctx.session?.id); } catch { /* 上报失败不影响已发出的图 */ }
         }
         if (!sent) {
           return fail(`图画出来了但发送失败：${sendFailed.join('；')}。`
@@ -338,7 +334,7 @@ async function callWithRetry(settings, body) {
 
 async function requestImages(settings, body) {
   if (typeof apiFetch !== 'function') {
-    throw new Error('联网能力不可用：清单需声明 permissions: ["web_fetch"]');
+    throw new Error('联网能力不可用：清单需声明 permissions: ["net.outbound"]');
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), settings.timeoutMs);

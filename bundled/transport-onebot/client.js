@@ -339,8 +339,10 @@ export class OneBotClient {
   }
 
   _looksLike401(err) {
-    const msg = String(err?.message ?? '');
-    return /401|unauthorized|token/i.test(msg);
+    // WS 升级被拒时 ws 库只把 HTTP 状态放进 message（"Unexpected server response: 401"）。
+    // 只匹配这一确定形态，任何消息里恰好含 "token"/"401" 的其它错误不得误触发令牌轮换。
+    if (err?.statusCode === 401 || err?.status === 401) return true;
+    return /^Unexpected server response: 401$/.test(String(err?.message ?? '').trim());
   }
 
   _teardown(gen) {

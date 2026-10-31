@@ -1,7 +1,8 @@
 {
   "id": "image-generate",
   "name": "文生图",
-  "version": "1.2.0",
+  "version": "1.2.1",
+  "entry": "index.js",
   "apiVersion": 1,
   "category": "media",
   "description": "用任意 OpenAI 兼容的图片生成接口（Base URL / API Key / 模型 id 全部自填）把自然语言描述画成图片，并直接发到当前群或私聊。",
@@ -82,7 +83,8 @@
     }
   },
   "permissions": [
-    "web_fetch"
+    "net.outbound",
+    "qq.send"
   ],
   "prompt": null,
   "kind": "skill"

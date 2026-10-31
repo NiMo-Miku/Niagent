@@ -38,6 +38,10 @@ export function selectSearchConfig(ws = {}, maxResults = null) {
 
 export function searchEndpoint(provider, baseUrl) {
   const url = new URL(baseUrl);
+  const isCustom = provider === 'custom' || provider.startsWith('custom:');
+  // 预设渠道把 API Key 放进 Authorization 头：只允许 https，防止密钥明文出站。
+  // 自定义渠道允许 http:（内网/自建网关场景），但同样不接受 URL 内嵌账号凭据。
+  if (url.protocol === 'http:' && !isCustom) throw new Error('预设搜索渠道仅接受 HTTPS 接口地址（防止 API Key 明文出站）；内网网关请使用自定义渠道');
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('搜索接口必须为不含账号密码的HTTP(S)地址');
   // A complete gateway endpoint is authoritative, including its query string.
   // A bare origin still accepts the historical convenience of appending a path.

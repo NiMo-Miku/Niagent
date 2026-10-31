@@ -23,15 +23,16 @@ npm run server
 
 ## 事实来源
 
-- 行为规格：`../dsh-spec/SPEC.md`（§1–§18，F-001~F-223 + §5/§8/§9 三段式契约）
-- 结构图纸：`../dsh-spec/DSH-ARCH.md`
-- 2026-10-16 追加式组合规格：[默认实现与追加式组合 v2.1](docs/architecture-composition.md)，取代旧版“固定内核/不可替换内核页”的限制。
+> 2026-10-31 注：本仓库（Niagent）不再附带 `../dsh-spec/` 行为规格书与 `../develop/` 0.4 参考源码——两者留在原作者工作区，未随仓库分发。下文对它们的引用仅作历史出处标注，当前无法在本仓库内复核；可复核的事实源是仓库内的规格文档与验收回归证据。
+
+- 追加式组合规格（架构主合同）：[默认实现与追加式组合 v2.1](docs/architecture-composition.md)
+- 行为规格出处（历史，**不在本仓库**）：`dsh-spec/SPEC.md`（§1–§18，F-001~F-223 + §5/§8/§9 三段式契约）、`DSH-ARCH.md`；task_plan/findings 中的规格编号引用以此为准
 - 当前进度：`progress.md`
 - 有头验收：`docs/headed-qa-checklist.md`、`docs/headed-qa-results.md`
 - 回归证据：`docs/headed-qa-regression-evidence.md`
 - 追加式组合验收：[实现与回归证据](docs/composition-regression-evidence.md)，[可复制示例](examples/composition/README.md)。
 - 部分重叠贡献：[逐目标替换、方法包装与多层撤销验收](docs/composition-overlap-evidence.md)。
-- 决策记录：`../dsh-spec/NEXT-SESSION.md` §3（D-1~D-7）
+- 决策记录出处（历史，**不在本仓库**）：`dsh-spec/NEXT-SESSION.md` §3（D-1~D-7）
 
 ## 外观自定义
 

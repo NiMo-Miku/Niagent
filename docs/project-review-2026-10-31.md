@@ -36,6 +36,8 @@
 6. **测试体系真实且离线**。约 322 个真实可执行测试(非夹具堆):121 个起真内核、69 个真 Chromium e2e、164 个源码静态契约断言;全用本地 mock(ws 假 OneBot、http 假 LLM、假域名),离线可跑。
 7. **安装器数据保全流程**。先备份(白名单式删除,reparse point/盘根全拒)→ 安装 → 恢复,带回执 ini,并有专门测试。
 
+> **2026-10-31 修复更新**：P1-1～P1-8 已全部处置——①首次装载生成随机控制台令牌并持久化（显式写空串仍表示关闭鉴权）；②_looksLike401 只认 ws 升级失败的确定形态；③预设搜索渠道仅接受 https；④usage/会话档案读缓存（mtime 失效）+ 目录微缓存 + /api/sessions limit 收敛；⑤账号 worker 输出落盘工作区日志、游离 rejection 只记录；⑥热重载临时副本启动期清扫；⑦README 显式声明 dsh-spec/develop 断链；⑧出厂技能 image-generate 迁移到当前 SDK（entry 字段、execution.send、net.outbound）。P2/P3 未动。
+
 ## 4. 问题清单
 
 ### P1 — 建议尽快处理

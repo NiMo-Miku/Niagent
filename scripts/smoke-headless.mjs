@@ -30,25 +30,35 @@ child.stdout.on('data', (d) => { out += d; });
 child.stderr.on('data', (d) => { out += d; });
 
 let up = false;
+let consoleToken = '';
 for (let i = 0; i < 30; i++) {
   await wait(500);
+  // 首次装载生成随机令牌并写入 config.json——脚本调用与浏览器 bootstrap 一样凭令牌访问。
   try {
-    const r = await fetch('http://127.0.0.1:3987/api/version', { signal: AbortSignal.timeout(1500) });
+    const configPath = path.join(dataDir, 'config.json');
+    if (fs.existsSync(configPath)) consoleToken = JSON.parse(fs.readFileSync(configPath, 'utf8'))?.server?.token || '';
+    if (!consoleToken) continue;
+    const r = await fetch('http://127.0.0.1:3987/api/version', {
+      headers: { 'x-console-token': consoleToken }, signal: AbortSignal.timeout(1500),
+    });
     if (r.ok) { up = true; break; }
   } catch { /* 还没起 */ }
 }
 check(up, 'server.js 起服务（headless 入口可用）');
 
 if (up) {
-  const ver = (await (await fetch('http://127.0.0.1:3987/api/version')).json());
+  const authed = (pathname) => fetch(`http://127.0.0.1:3987${pathname}`, { headers: { 'x-console-token': consoleToken } });
+  const ver = await (await authed('/api/version')).json();
   check(ver.version === '0.5.0', '/api/version → 0.5.0');
-  const skills = (await (await fetch('http://127.0.0.1:3987/api/skills')).json());
+  const noToken = await fetch('http://127.0.0.1:3987/api/version');
+  check(noToken.status === 401, '未携带令牌的 API 调用被拒（P1-1）');
+  const skills = await (await authed('/api/skills')).json();
   check(Array.isArray(skills.skills) && skills.skills.some((s) => s.id === 'hello' && (s.status === 'disabled' || s.code === 'disabled')),
     'hello 捆绑插件在列且默认停用');
   const home = await fetch('http://127.0.0.1:3987/');
   const html = await home.text();
   check(home.ok && html.includes('QQ Agent'), '控制台首页渲染');
-  const logs = (await (await fetch('http://127.0.0.1:3987/api/logs')).json());
+  const logs = await (await authed('/api/logs')).json();
   check(logs.logs.length > 0, '内核日志可读');
   check(fs.existsSync(path.join(dataDir, 'qq-agent.lock')), '单实例锁文件存在');
   check(out.includes('控制台'), '就绪日志打印控制台地址（SPEC §4.3）');
@@ -64,7 +74,9 @@ const dataDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'qqa-smoke2-'));
 const kernel = await createApplication({ env: { ...process.env, QQ_AGENT_DATA_DIR: dataDir2, QQ_AGENT_PORT: '3988' }, headless: true });
 const port = await kernel.start();
 check(port === 3988, `start() 返回真实端口（${port}）`);
-const st = (await (await fetch(`http://127.0.0.1:${port}/api/status`)).json());
+// 同进程内核同样走首次装载生成的随机令牌（写在其 dataDir 的 config.json）。
+const consoleToken2 = JSON.parse(fs.readFileSync(path.join(dataDir2, 'config.json'), 'utf8'))?.server?.token || '';
+const st = (await (await fetch(`http://127.0.0.1:${port}/api/status`, { headers: { 'x-console-token': consoleToken2 } })).json());
 check(st.ok && st.dataDir === dataDir2, '/api/status 返回 dataDir');
 
 await kernel.stop();

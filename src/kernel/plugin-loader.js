@@ -263,10 +263,17 @@ export function createPluginLoader({
   const loadingEntries = new Set();
   const roots = {
     bundled: path.join(appRoot, 'bundled'),
-    plugins: path.join(extensionRoot, 'plugins'), // 用户确定性型（出厂空）
-    skills: path.join(extensionRoot, 'skills'),   // 用户 LLM 型（出厂空）
+    plugins: path.join(extensionRoot, 'plugins'), // 用户确定性型
+    skills: path.join(extensionRoot, 'skills'),   // 用户 LLM 型（出厂预装 image-generate）
   };
   assertExtensionDirectory(extensionRoot, { create: true });
+  // 启动期清扫：崩溃/断电遗留的热重载临时副本（mkdtemp 无独立生命周期）此刻全是孤儿。
+  // 该缓存根由当前 loader 独占（实例锁保证每个 extensionRoot 只有一个内核），先清空再挂载。
+  try {
+    for (const name of fs.readdirSync(runtimeCacheRoot)) {
+      fs.rmSync(path.join(runtimeCacheRoot, name), { recursive: true, force: true });
+    }
+  } catch (error) { log.warn?.(`[loader] 热重载缓存清扫失败：${error?.message ?? error}`); }
   const graphScope = JSON.stringify([path.resolve(extensionRoot), path.resolve(runtimeCacheRoot)]);
 
   const isLoaded = (id) => entries.has(id);
