@@ -112,6 +112,7 @@ ok(sendMsg.description.includes('数组'), '描述讲清分条');
 const poke = kernel.registry.get('send_poke');
 eq(poke.params.required, [], 'send_poke required 为空（SUSPECT C-05 复刻）');
 const finish = kernel.registry.get('finish');
+eq(Boolean(finish.params && finish.params.properties && finish.params.properties.lurk), true, 'finish 暴露 lurk 潜水参数');
 eq(finish.category, 'system', 'finish 分类');
 ok(finish.description.includes('activeTopic'), 'finish 描述提 activeTopic');
 const readVideo = kernel.registry.get('read_video');

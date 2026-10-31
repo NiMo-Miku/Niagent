@@ -859,6 +859,8 @@ function render() {
     field(timing, 'drainDelayMs', '积压处理间隔（毫秒）', 'number', { min: 200 });
     field(timing, 'maxConcurrentRuns', '并发会话上限', 'number', { min: 1 });
     field(timing, 'sessionRetryAttempts', '未发言失败会话重试次数', 'number', { min: 0, max: 5 });
+    field(timing, 'sessionContinue.enabled', '启用会话延续（收尾后同期消息由同一会话持续处理）', 'checkbox');
+    field(timing, 'sessionContinueWindowMs', '会话延续窗口（毫秒，0 关闭）', 'number', { min: 0 });
     const mute = group(wake.fields, '群指令安静模式');
     field(mute, 'commandMute.enabled', '启用群指令安静模式', 'checkbox');
     field(mute, 'commandMute.command', '安静指令');

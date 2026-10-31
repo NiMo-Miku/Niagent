@@ -145,7 +145,7 @@ test('complete spreadsheet flow: 1–34, busy arrivals become history and do not
   }
   await e.incoming(32);
   const second = e.sessions.current(e.key), secondDeadline = second.waitUntil;
-  assert.notEqual(second.id, first.id);
+  assert.equal(second.id, first.id, '延续窗口内复用同一会话（2026-10-31 行为变更）');
   assert.equal(second.status, 'waiting');
   for (const number of [33, 34]) {
     await e.incoming(number);
@@ -168,7 +168,7 @@ test('complete spreadsheet flow: 1–34, busy arrivals become history and do not
   await until(() => second.status === 'noreply', 'second ordinary conversation completed');
   assert.deepEqual(e.unread(), []);
   assert.deepEqual(e.dice, [1, 2, 30, 31, 32]);
-  assert.equal(e.sessions.listSummaries().length, 2);
+  assert.equal(e.sessions.listSummaries().length, 1, '延续不产生新条目');
   assert.deepEqual(e.sends, []);
   assert.deepEqual(e.errors, []);
 });
@@ -194,7 +194,7 @@ test('ordinary busy arrivals stay read after a failed run and when the current m
   });
 });
 
-test('busy mentions retain the first mention and its tail for one follow-up, then reset at the next batch', async t => {
+test('busy mentions retain the first mention and its tail for one follow-up that continues the same session', async t => {
   for (const key of ['group:30501', 'private:30503']) await t.test(key, async t => {
     const e = runtime(t, { key, hit: () => false });
     await e.incoming(1, { atMe: true });
@@ -229,9 +229,10 @@ test('busy mentions retain the first mention and its tail for one follow-up, the
     }
 
     e.gates[0].resolve();
-    await until(() => first.status === 'noreply' && e.orch.status().waiting.length === 1, 'one follow-up queued after completion');
+    await until(() => e.orch.status().waiting.length === 1, 'one follow-up queued after completion');
     const second = e.sessions.current(key), deadline = second.waitUntil;
-    assert.notEqual(second.id, first.id);
+    assert.equal(second.id, first.id, '跟随运行延续同一会话');
+    assert.equal(second.continued, true);
     await e.incoming(9);
     assert.equal(second.waitUntil, deadline);
     assert.deepEqual(e.unread(), [5, 6, 7, 8, 9]);
@@ -243,7 +244,7 @@ test('busy mentions retain the first mention and its tail for one follow-up, the
     for (const number of [2, 3, 4]) { assert.ok(history.includes(text(number))); assert.ok(!triggers.includes(text(number))); }
     for (const number of [5, 6, 7, 8, 9]) assert.ok(triggers.includes(text(number)));
     assert.deepEqual(e.unread(), []);
-    assert.equal(e.sessions.listSummaries().length, 2, 'multiple mentions produce one follow-up session');
+    assert.equal(e.sessions.listSummaries().length, 1, 'multiple mentions stay in one continuous session');
     assert.equal(e.dice.filter(number => number === 5).length, 1);
     assert.ok(!e.dice.includes(6) && !e.dice.includes(7) && !e.dice.includes(8));
 

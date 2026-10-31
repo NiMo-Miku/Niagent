@@ -313,6 +313,37 @@ export function createSessionRegistry({ dataDir, log = console, keepSessionFiles
     return null;
   }
 
+  /** 会话延续窗口：最近一次正常收尾（done/noreply）且未超时的同聊天会话（不含后台会话）。 */
+  function continuable(chatKey, sinceTs) {
+    let best = null;
+    for (const s of byId.values()) {
+      if (s.background || s.chatKey !== chatKey) continue;
+      if (!['done', 'noreply'].includes(s.status)) continue;
+      if (s.topicEnded === true) continue; // 模型判定话题结束（潜水）：后续触发一律开新会话
+      const ended = Number(s.endedAt) || 0;
+      if (!ended || ended < sinceTs) continue;
+      if (!best || ended > (Number(best.endedAt) || 0)) best = s;
+    }
+    return best;
+  }
+
+  /** 重开已收尾会话（延续窗口）：记账快照保留，再次收尾只记增量（usage-days 按会话 id UPSERT）。 */
+  function reopen(id, { trigger = null, status = 'running' } = {}) {
+    const s = byId.get(id);
+    if (!s || ['running', 'waiting'].includes(s.status)) return null;
+    if (!['done', 'noreply'].includes(s.status)) return null; // error/aborted 不延续
+    cancelPersist(id);
+    s.status = status === 'waiting' ? 'waiting' : 'running';
+    s.endedAt = null; s.error = null; s.finishReason = null;
+    if (trigger) s.trigger = trigger;
+    s.startedAt = Date.now();
+    s.roundsBase = s.rounds ?? 0;
+    s.continuations = (s.continuations ?? 0) + 1;
+    bus?.emit('session.start', summary(s));
+    schedulePersist(s);
+    return s;
+  }
+
   function running() {
     return [...byId.values()].filter((s) => s.status === 'running' && !s.background);
   }
@@ -457,7 +488,7 @@ export function createSessionRegistry({ dataDir, log = console, keepSessionFiles
   }
 
   return {
-    create, update, stream, finish, peek, get, current, running,
+    create, update, stream, finish, peek, get, current, running, continuable, reopen,
     listSummaries, reconcileInBackground, todayUsage, flushIndexCache,
     stop() {
       for(const id of [...streamBatches.keys()])flushStream(id);

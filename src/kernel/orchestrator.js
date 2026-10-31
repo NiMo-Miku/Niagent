@@ -237,9 +237,24 @@ export function createOrchestrator({
       const unread = unreadForWake(chatKey);
       const first = unread[0];
       const trigger = first ? `${first.senderName}：${String(first.text).slice(0, 40)}` : '（补充处理）';
-      const s = sessions.create(chatKey, { trigger, waitUntil: now() + delay });
-      sessions.update(s, { status: 'waiting', waitUntil: now() + delay, verified, proactive });
-      sid = s.id;
+      // 会话延续窗口：正常收尾（done/noreply）后的延续期内，后续消息原地转回同一会话
+      //（waiting → running），保障上下文连续性——轮次累计、UI 同一条目、提示词锚点链延续。
+      // error/aborted 与主动开话题不延续。
+      const windowMs = Math.max(0, Number(cfg().sessionContinueWindowMs ?? 180000));
+      const continuationOn = cfg().sessionContinue?.enabled !== false;
+      const prior = continuationOn && windowMs > 0 && unread.length > 0 ? sessions.continuable?.(chatKey, now() - windowMs) : null;
+      if (prior) {
+        const reopened = sessions.reopen(prior.id, { trigger, status: 'waiting' });
+        if (reopened) {
+          sessions.update(reopened, { status: 'waiting', waitUntil: now() + delay, verified, proactive, continued: true });
+          sid = reopened.id;
+        }
+      }
+      if (!sid) {
+        const s = sessions.create(chatKey, { trigger, waitUntil: now() + delay });
+        sessions.update(s, { status: 'waiting', waitUntil: now() + delay, verified, proactive });
+        sid = s.id;
+      }
     }
     const timer = setTimeout(() => {
       pendingWake.delete(chatKey);
@@ -336,7 +351,11 @@ export function createOrchestrator({
     if (proactive && quietNow) return;
     const unreadAll = unreadForWake(chatKey);
     if (unreadAll.length === 0 && !proactive) {
-      if (waiting) sessions.discard(waiting.id);
+      if (waiting) {
+        // 延续中的会话不再有未读：保留记录并给终态，而不是丢弃整段延续历史。
+        if (waiting.continued) sessions.finish(waiting.id, 'aborted', { error: '延续窗口内未读已被清空' });
+        else sessions.discard(waiting.id);
+      }
       return;
     }
     let batch = [];
@@ -376,7 +395,13 @@ export function createOrchestrator({
       }
       batch = unreadAll.filter((m) => !rejectedIds.has(m.id) && m.ts >= firstTrigger.ts);
     }
-    if (batch.length === 0 && !proactive) { if (waiting) sessions.discard(waiting.id); return; }
+    if (batch.length === 0 && !proactive) {
+      if (waiting) {
+        if (waiting.continued) sessions.finish(waiting.id, 'aborted', { error: '延续窗口内未读已被清空' });
+        else sessions.discard(waiting.id);
+      }
+      return;
+    }
     // 触发批一旦被运行消费即标已读；失败时按本批 id 恢复。
     for (const entry of batch) store.markEntryRead(chatKey, entry.id);
 
@@ -434,7 +459,7 @@ export function createOrchestrator({
         if (result.error) throw result.error;
         // 收尾：sent>0 → done；否则 noreply（正常选项不是错误）
         sessions.finish(session.id, result.sent.length > 0 ? 'done' : 'noreply', {
-          sent: result.sent, usage: result.usage, rounds: result.rounds,
+          sent: result.sent, usage: result.usage, rounds: (session.roundsBase ?? 0) + result.rounds,
           finishReason: result.finishReason, promptChars: result.promptChars, model: result.model, vendor: result.vendor,
         });
         discoverAfterConversation(chatKey);
@@ -629,10 +654,14 @@ export function createOrchestrator({
     void isPrivate;
     const c = cfg();
     if (c.chatActive?.enabled !== true) { activeFor(chatKey); return; }
+    if (session.lurkAfter === true) { // 模型判定话题结束：清活跃期并标记不延续（潜水）
+      active.delete(chatKey); const oldL=activeTimers.get(chatKey); if(oldL){clearTimeout(oldL);wakeTimers.delete(oldL);} activeTimers.delete(chatKey);
+      session.topicEnded = true; return;
+    }
     const ttl = Math.max(60_000, (Number(c.chatActive.ttlMinutes) || 30) * 60_000);
     const topic = session.activeTopic;
     const reason = String(result.finishReason ?? '');
-    if (/话题(结束|终止|偏离)/.test(reason)) { active.delete(chatKey); const old=activeTimers.get(chatKey); if(old)clearTimeout(old); activeTimers.delete(chatKey); return; }
+    if (/话题(结束|终止|偏离)/.test(reason)) { active.delete(chatKey); const old=activeTimers.get(chatKey); if(old)clearTimeout(old); activeTimers.delete(chatKey); session.topicEnded = true; return; }
     if (topic && String(topic).length <= ACTIVE_TOPIC_MAX && session.contextTier >= 1 && session.contextTier <= 3) {
       const old=activeTimers.get(chatKey); if(old){clearTimeout(old);wakeTimers.delete(old);}
       const until=now()+ttl;

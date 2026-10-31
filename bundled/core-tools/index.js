@@ -114,6 +114,7 @@ export default {
           summary: { type: 'string', description: '本轮小结（≤300 字，可省）' },
           reason: { type: 'string', description: '结束原因（如"说完了""话题结束"）' },
           activeTopic: { type: 'string', description: '想继续深聊的话题（≤60 字）' },
+          lurk: { type: 'boolean', description: '判断话题已自然结束（道别/问题解决/无新内容）时置 true：结束活跃话题并进入潜水，后续消息恢复按档位判定' },
         },
         required: [],
       },
@@ -122,6 +123,7 @@ export default {
         if (args.summary) c.session.finishReason = String(args.summary).slice(0, 300);
         if (args.reason) c.session.finishReason = String(args.reason);
         if (args.activeTopic) c.session.activeTopic = String(args.activeTopic).slice(0, 60);
+        if (args.lurk) c.session.lurkAfter = true;
         return { ok: true, result: { finished: true } };
       },
     });

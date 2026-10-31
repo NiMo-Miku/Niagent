@@ -69,6 +69,9 @@ export function buildDefaultConfig({ portOffset = 0, personaText = '' } = {}) {
     allowAllWhenEmpty: false,
     blocklist: {}, globalBlocklist: [], communityExemptions: [],
     wakeDelayMs: 2000, drainDelayMs: 1200, maxConcurrentRuns: 2, sessionRetryAttempts: 2,
+    // 会话延续窗口：正常收尾后该时长内的后续消息由同一会话持续处理（上下文连续）；0 关闭。
+    sessionContinue: { enabled: true },
+    sessionContinueWindowMs: 180000,
     send: {
       minGapMs: 1000, maxGapMs: 3000, byLengthMs: 20,
       maxPerMinute: 80, maxPerHour: 500, hardSplitAt: 4000, dedupeWindowMs: 8000,

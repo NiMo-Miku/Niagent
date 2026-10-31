@@ -169,4 +169,60 @@ try {
   e9.orch.stop();
 }
 
+section('会话延续窗口：收尾后同期触发由同一会话持续处理');
+const e10 = makeEnv({ cfgOverrides: { sessionContinueWindowMs: 60000, sessionRetryAttempts: 0 } });
+const first10 = e10.sessions.create('group:100', { trigger: 'A：第一句' });
+e10.sessions.finish(first10.id, 'done', { sent: [{ text: '答复' }], rounds: 2, usage: { calls: 1, promptTokens: 100, completionTokens: 50, totalTokens: 150 } });
+ok(e10.sessions.continuable('group:100', Date.now() - 60000), '窗口内可延续');
+ok(!e10.sessions.continuable('group:100', Date.now() + 1000), '窗口外不可延续');
+const m10 = e10.store.appendIncoming('group:100', { mid: 2, ts: Date.now(), senderId: '555', senderName: 'A', text: '@小鲸鱼 接着说', atMe: true, atNames: [] });
+await e10.orch.onIncoming('group:100', e10.store.recent('group:100', 1)[0]);
+const waiting10 = e10.orch.status().waiting.find((x) => x.chatKey === 'group:100');
+eq(waiting10.sessionId, first10.id, '延续窗口内复用同一会话 id（不新建条目）');
+// 唤醒进入运行：LLM 未配置按既有闸门收尾，但会话身份已延续、轮次基线保留
+await e10.orch.wake('group:100', { waitingSessionId: waiting10.sessionId, verified: true });
+const after10 = e10.sessions.peek(first10.id);
+eq(after10.continuations, 1, '延续计数');
+eq(after10.roundsBase, 2, '轮次基线保留');
+ok(['error', 'aborted', 'done', 'noreply'].includes(after10.status), `收尾状态 ${after10.status}`);
+section('会话延续开关与潜水标记');
+const e12 = makeEnv({ cfgOverrides: { sessionContinue: { enabled: false }, sessionContinueWindowMs: 60000 } });
+const f12 = e12.sessions.create('group:100', { trigger: 'x' });
+e12.sessions.finish(f12.id, 'done', { sent: [{ text: 'x' }], rounds: 1, usage: { calls: 1, promptTokens: 10, completionTokens: 5, totalTokens: 15 } });
+const m12 = e12.store.appendIncoming('group:100', { mid: 1, ts: Date.now(), senderId: '555', senderName: 'A', text: '@小鲸鱼 在吗', atMe: true, atNames: [] });
+await e12.orch.onIncoming('group:100', e12.store.recent('group:100', 1)[0]);
+const w12 = e12.orch.status().waiting.find((x) => x.chatKey === 'group:100');
+ok(w12 && w12.sessionId !== f12.id, '开关关闭 → 窗口内也不延续');
+e12.orch.stop();
+const ended = e10.sessions.peek(first10.id) ?? { topicEnded: true };
+const lurked = e10.sessions.create('group:300', { trigger: 'x' });
+e10.sessions.finish(lurked.id, 'done', { sent: [{ text: 'y' }], rounds: 1, usage: { calls: 1, promptTokens: 5, completionTokens: 5, totalTokens: 10 }, topicEnded: true });
+ok(!e10.sessions.continuable('group:300', Date.now() - 60000), '模型判定话题结束（潜水）→ 不延续');
+const continuable1 = e10.sessions.create('group:100', { trigger: 'y' });
+e10.sessions.finish(continuable1.id, 'done', { sent: [{ text: 'z' }], rounds: 1, usage: { calls: 1, promptTokens: 5, completionTokens: 5, totalTokens: 10 } });
+ok(e10.sessions.continuable('group:100', Date.now() - 60000), '未标记话题结束的会话仍可延续');
+e10.orch.stop();
+
+// error/aborted 状态不进入延续候选（直接断言 continuable 的状态过滤）
+const errS = e10.sessions.create('group:200', { trigger: 'x' });
+e10.sessions.finish(errS.id, 'error', { error: 'boom' });
+const abortS = e10.sessions.create('group:200', { trigger: 'y' });
+e10.sessions.finish(abortS.id, 'aborted', { error: 'boom' });
+ok(!e10.sessions.continuable('group:200', Date.now() - 60000), 'error/aborted 会话不延续');
+// 后台会话（记忆整理）不进入延续候选
+const bg = e10.sessions.create('group:100', { trigger: '记忆整理', background: true });
+e10.sessions.finish(bg.id, 'done', { usage: { calls: 1, promptTokens: 1, completionTokens: 1, totalTokens: 2 } });
+ok(!e10.sessions.continuable('group:100', Date.now() - 60000) || e10.sessions.continuable('group:100', Date.now() - 60000).id !== bg.id, '后台会话不延续');
+e10.orch.stop();
+
+section('延续窗口关闭（0）→ 每次触发都是新会话');
+const e11 = makeEnv({ cfgOverrides: { sessionContinueWindowMs: 0 } });
+const first11 = e11.sessions.create('group:100', { trigger: 'x' });
+e11.sessions.finish(first11.id, 'done', { sent: [{ text: 'x' }], rounds: 1, usage: { calls: 1, promptTokens: 10, completionTokens: 5, totalTokens: 15 } });
+const m11 = e11.store.appendIncoming('group:100', { mid: 1, ts: Date.now(), senderId: '555', senderName: 'A', text: '@小鲸鱼 在吗', atMe: true, atNames: [] });
+await e11.orch.onIncoming('group:100', e11.store.recent('group:100', 1)[0]);
+const w11 = e11.orch.status().waiting.find((x) => x.chatKey === 'group:100');
+ok(w11 && w11.sessionId !== first11.id, '窗口关闭 → 新会话');
+e11.orch.stop();
+
 summary('18-orchestrator');
