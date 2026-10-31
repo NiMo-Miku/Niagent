@@ -13,7 +13,7 @@ npm install
 npm run server
 ```
 
-启动后打开 `http://127.0.0.1:3210` 即为 Web 控制台；Windows 也可直接双击 [`启动QQ机器人.bat`](启动QQ机器人.bat)（自动装依赖、启动服务并打开浏览器）。本项目只提供无头服务与浏览器控制台，不包含桌面应用。
+启动后打开 `http://127.0.0.1:3210` 即为 Web 控制台；Windows 也可直接双击 [`启动QQ机器人.bat`](启动QQ机器人.bat)（自动装依赖、按顶部配置的端口启动服务，不自动打开浏览器）。首次启动会自动生成随机控制台令牌并写入 config.json：浏览器打开控制台会自动领取令牌，脚本/程序调用 API 需携带该令牌（`x-console-token` 头；显式把 `server.token` 写成空字符串可关闭鉴权）。本项目只提供无头服务与浏览器控制台，不包含桌面应用。
 
 可自行从上游 Releases 下载 [NapCat 完整 Node 包](https://github.com/NapNeko/NapCatQQ/releases) 或 [SnowLuma 完整包](https://github.com/SnowLuma/SnowLuma/releases)，将 ZIP 或完整解压目录放进项目根目录的 [`protocols/`](protocols/README.md)，再到「设置 → QQ 连接」点击“启动并连接”。QQ-Agent 自动检测发行物、解压 ZIP、备份并补齐 OneBot 配置；登录、首次协议确认及客户端接入由你在上游自己的页面完成。只有显式启用“随 QQ-Agent 启动”才会自动启动所选包。
 

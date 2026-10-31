@@ -6,7 +6,7 @@
 
 ## 1. 组合模型
 
-正式启动入口 `src/server.js` 和 `electron/main.js` 均调用 `createApplication()`。启动顺序：
+正式启动入口 `src/server.js` 调用 `createApplication()`（2026-10-31 起 Electron 桌面外壳已移除,产品形态为无头服务 + 浏览器 Web 控制台）。启动顺序：
 
 1. 扫描 `APP_ROOT/overrides/<层目录>/composition.json`；不会扫描市场下载的 `plugins/` 或 `skills/` 中的组合声明。
 2. 校验全部层的版本、路径、依赖、UI 声明和包装链；在此之前不执行追加模块。
