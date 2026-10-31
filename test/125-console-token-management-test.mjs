@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {createRequire} from 'node:module';import {EventEmitter} from 'node:events';
 import {createKernel} from '../src/kernel/kernel.js';
-import {startElectron,stopElectron} from '../electron/main.js';
 import {ApiClient} from '../ui/shell/api-client.js';
 import {SseClient} from '../ui/shell/sse-client.js';
 import {createConsoleAuth,CONSOLE_SESSION_KEY} from '../ui/shell/console-auth.js';
@@ -147,31 +146,6 @@ try{
     assert.equal(sse.controller,currentController);assert.equal(gates.length,2);assert.deepEqual(states,['connecting','connecting','connected']);sse.close();
   }finally{globalThis.fetch=realFetch;if(oldLocation===undefined)delete globalThis.location;else globalThis.location=oldLocation;}
 
-  console.log('· Real Electron token IPC rereads committed config across F5; it remains main-frame-only');
-  const handlers=new Map(),createdWindows=[];
-  class Window extends EventEmitter{
-    constructor(){super();this.destroyed=false;this.contents=new EventEmitter();this.contents.mainFrame={url:''};this.contents.setWindowOpenHandler=()=>{};this.contents.isDestroyed=()=>this.destroyed;createdWindows.push(this);}
-    get webContents(){if(this.destroyed)throw new TypeError('Object has been destroyed');return this.contents;}
-    isDestroyed(){return this.destroyed;}async loadURL(url){this.contents.mainFrame={url};}
-    show(){}hide(){}destroy(){this.destroyed=true;this.contents.emit('destroyed');this.emit('closed');}
-  }
-  const app=new EventEmitter();Object.assign(app,{isPackaged:false,getPath:()=>dataDir,setPath(){},requestSingleInstanceLock:()=>true,whenReady:async()=>{},quit(){},setLoginItemSettings(){}});
-  const electron={app,BrowserWindow:Window,ipcMain:{handle:(name,fn)=>handlers.set(name,fn),removeHandler:name=>handlers.delete(name),on(){},removeListener(){}},session:{defaultSession:{setProxy:async()=>{},setPermissionRequestHandler(){}}},shell:{openExternal(){}}};
-  const envData=process.env.QQ_AGENT_DATA_DIR;process.env.QQ_AGENT_DATA_DIR=dataDir;
-  try{
-    const desktop=await startElectron(electron,{createKernel:()=>({...kernel,start:async()=>Number(new URL(base).port),stop:async()=>{}})}),contents=desktop.window.webContents,read=handlers.get('qq-agent:get-console-token');
-    assert.equal(read({sender:contents,senderFrame:contents.mainFrame}),recoveredToken);kernel.config.update({server:{token:'desktop-latest-125'}});
-    await desktop.window.loadURL(base+'/');assert.equal(read({sender:contents,senderFrame:contents.mainFrame}),'desktop-latest-125');
-    assert.equal(read({sender:contents,senderFrame:{url:base+'/'}}),'');
-    const desktopWin={location:{pathname:'/',origin:base,href:base+'/'},qqAgentShell:{getConsoleToken:async()=>read({sender:contents,senderFrame:contents.mainFrame})},sessionStorage:{getItem(){return null;},setItem(){throw new Error('desktop must not cache');},removeItem(){}}};desktopWin.top=desktopWin;
-    const desktopAuth=await createConsoleAuth(desktopWin);desktopAuth.adopt('desktop-latest-125');assert.equal(desktopAuth.token,'desktop-latest-125');
-    desktop.window.destroy();app.emit('activate');
-    // activate owns a newly created main window; inspect the real guarded handler.
-    const newWindow=createdWindows.at(-1),newContents=newWindow.webContents;
-    await newWindow.loadURL(base+'/');kernel.config.update({server:{token:'desktop-recreated-125'}});
-    await newWindow.loadURL(base+'/');assert.equal(read({sender:newContents,senderFrame:newContents.mainFrame}),'desktop-recreated-125');
-    assert.equal(read({sender:contents,senderFrame:contents.mainFrame}),'');
-  }finally{await stopElectron(electron);if(envData===undefined)delete process.env.QQ_AGENT_DATA_DIR;else process.env.QQ_AGENT_DATA_DIR=envData;}
   assert.equal(outbound,0);assert.deepEqual(outboundRequests,[]);
-  console.log('✓ 125 host-only management, durable rotation/failure, SSE revocation, reload caches/generations and real guarded IPC passed');
+  console.log('✓ 125 host-only management, durable rotation/failure, SSE revocation, reload caches/generations passed');
 }finally{await browser?.close();await kernel.stop();assert.equal(path.dirname(path.resolve(dataDir)),path.resolve(os.tmpdir()));fs.rmSync(dataDir,{recursive:true,force:true});}

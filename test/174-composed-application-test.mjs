@@ -183,10 +183,6 @@ export async function register(http, context, config) {
 
   // Secondary launcher wiring checks complement the running entrypoint regression.
   const server = fs.readFileSync(path.join(workspace, 'src/server.js'), 'utf8');
-  const desktop = fs.readFileSync(path.join(workspace, 'electron/main.js'), 'utf8');
   assert.match(server, /import\s*\{\s*createApplication\s*\}\s*from\s*['"]\.\/kernel\/composition\.js['"]/);
   assert.match(server, /await createApplication\(/);
-  assert.match(desktop, /await import\(['"]\.\.\/src\/kernel\/composition\.js['"]\)/);
-  assert.match(desktop, /factory\s*=\s*application\.createApplication/);
-  assert.match(desktop, /kernel\s*=\s*await factory\(/);
 });

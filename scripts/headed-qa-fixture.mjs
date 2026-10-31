@@ -37,7 +37,7 @@ function syntheticWav() {
 
 function copyApplication(appRoot) {
   fs.mkdirSync(appRoot, { recursive: true });
-  for (const name of ['src', 'bundled', 'ui', 'electron', 'assets']) fs.cpSync(path.join(workspace, name), path.join(appRoot, name), { recursive: true });
+  for (const name of ['src', 'bundled', 'ui', 'assets']) fs.cpSync(path.join(workspace, name), path.join(appRoot, name), { recursive: true });
   for (const name of ['scripts/lib']) {
     const source = path.join(workspace, name);
     if (!fs.existsSync(source)) continue;
@@ -104,11 +104,6 @@ function seedData(dataDir, cfg, baseUrl) {
   writeJson(markerFile, { synthetic: true, seededAt: now, fixtureVersion: 2 });
 }
 
-export function writeQaElectronWrapper(appRoot, dataDir, consolePort, baseDir) {
-  const wrapper = path.join(appRoot, 'qa-electron.mjs');
-  fs.writeFileSync(wrapper, `// QA adapter only; production electron/main.js remains unchanged.\nimport fs from 'node:fs';\nimport http from 'node:http';\nimport https from 'node:https';\nimport { app, shell } from 'electron';\nprocess.env.QQ_AGENT_DATA_DIR=${JSON.stringify(dataDir)};\nprocess.env.QQ_AGENT_PORT=${JSON.stringify(String(consolePort))};\nprocess.env.QQ_AGENT_PROFILE='99';\nprocess.env.QQ_AGENT_MIGRATE_FROM=${JSON.stringify(path.join(baseDir, 'absent-migration-source'))};\nconst record=(kind,data)=>fs.appendFileSync(${JSON.stringify(path.join(baseDir, 'desktop-adapter.jsonl'))},JSON.stringify({ts:Date.now(),synthetic:true,kind,data})+'\\n');\napp.setLoginItemSettings=options=>record('setLoginItemSettings',options); shell.openExternal=async url=>{record('openExternal',{url,externalOpened:false});};\nconst loopback=hostname=>['127.0.0.1','localhost','[::1]','::1'].includes(hostname);\nconst nativeFetch=globalThis.fetch;\nglobalThis.fetch=(input,options)=>{const raw=typeof input==='string'?input:input?.url || String(input);const url=new URL(raw);if(!loopback(url.hostname)){record('blockedExternalFetch',{url:raw});return Promise.reject(new Error('QA_OFFLINE_EXTERNAL: '+url.hostname));}return nativeFetch(input,options);};\nfor(const transport of [http,https])for(const name of ['request','get']){const native=transport[name];transport[name]=function(input,...rest){const url=typeof input==='string'||input instanceof URL?new URL(input):null;const hostname=url?.hostname || input?.hostname || String(input?.host||'localhost').split(':')[0];if(!loopback(hostname)){record('blockedExternalRequest',{hostname});throw new Error('QA_OFFLINE_EXTERNAL: '+hostname);}return native.call(this,input,...rest);};}\nawait import('./electron/main.js');\n`);
-  return wrapper;
-}
 
 // Explicit sync helper: UI assets can be refreshed while a QA window is open;
 // main/kernel changes take effect after the root tester restarts that window.
@@ -120,8 +115,7 @@ export function syncHeadedQaApplication({ baseDir = path.join(workspace, '.qa-lo
     if (!source.startsWith(workspace + path.sep) || !destination.startsWith(path.resolve(descriptor.appRoot) + path.sep)) throw new Error('Unsafe QA sync path');
     fs.mkdirSync(path.dirname(destination), { recursive: true }); fs.copyFileSync(source, destination);
   } else copyApplication(descriptor.appRoot);
-  writeQaElectronWrapper(descriptor.appRoot, descriptor.dataDir, descriptor.consolePort, descriptor.baseDir);
-  return { appRoot: descriptor.appRoot, files: files || ['src', 'bundled', 'ui', 'electron', 'assets', 'package.json'], restartForRuntimeChanges: true };
+  return { appRoot: descriptor.appRoot, files: files || ['src', 'bundled', 'ui', 'assets', 'package.json'], restartForRuntimeChanges: true };
 }
 
 export async function startHeadedQaFixture({ baseDir = path.join(workspace, '.qa-local', 'headed-20261011'), copy = true, seed = true, servicePort, consolePort: requestedConsolePort } = {}) {
@@ -232,10 +226,8 @@ export async function startHeadedQaFixture({ baseDir = path.join(workspace, '.qa
   });
   else config.update({ api: { ...(config.get().api.provider === 'qa-local' ? { baseUrl: `${baseUrl}/v1` } : {}) }, providers: (config.get().providers ?? []).map((provider) => provider.id === 'qa-local' ? { ...provider, baseURL: `${baseUrl}/v1` } : provider), onebot: { wsUrl: baseUrl.replace('http:', 'ws:') + '/onebot/ws', httpUrl: baseUrl + '/onebot' }, server: { port: consolePort } });
   if (seed) seedData(dataDir, config.get(), baseUrl);
-  const wrapper = writeQaElectronWrapper(appRoot, dataDir, consolePort, baseDir);
-  const descriptor = { synthetic: true, baseDir, appRoot, dataDir, baseUrl, onebotWs: baseUrl.replace('http:', 'ws:') + '/onebot/ws', onebotHttp: baseUrl + '/onebot', llmUrl: baseUrl + '/v1', imageUrl: baseUrl + '/media/qa.png', videoUrl: baseUrl + '/media/qa.mp4', audioUrl: baseUrl + '/media/qa.wav', asrUrl: baseUrl + '/v1', consolePort, consoleUrl: `http://127.0.0.1:${consolePort}`, token: config.get().server.token, wrapper,
-    launchCommand: `& '${path.join(workspace, 'node_modules', 'electron', 'dist', 'electron.exe')}' '${wrapper}' --force-renderer-accessibility`,
-    note: 'Real production UI/kernel/default services; OneBot, LLM and media servers are synthetic loopback fixtures. OS autostart is recorded by QA adapter, never changed. External fetch is blocked in the QA wrapper.' };
+  const descriptor = { synthetic: true, baseDir, appRoot, dataDir, baseUrl, onebotWs: baseUrl.replace('http:', 'ws:') + '/onebot/ws', onebotHttp: baseUrl + '/onebot', llmUrl: baseUrl + '/v1', imageUrl: baseUrl + '/media/qa.png', videoUrl: baseUrl + '/media/qa.mp4', audioUrl: baseUrl + '/media/qa.wav', asrUrl: baseUrl + '/v1', consolePort, consoleUrl: `http://127.0.0.1:${consolePort}`, token: config.get().server.token,
+    note: 'Real production UI/kernel/default services; OneBot, LLM and media servers are synthetic loopback fixtures. External requests stay on loopback in QA copies.' };
   writeJson(path.join(baseDir, 'fixture.json'), descriptor); save();
   return { ...descriptor, state, emit, server, wss, async close() { for (const client of wss.clients) client.terminate(); await new Promise((resolve) => wss.close(resolve)); await new Promise((resolve) => server.close(resolve)); } };
 }

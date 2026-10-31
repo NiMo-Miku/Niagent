@@ -434,5 +434,4 @@ void Promise.allSettled([initialRuntimeReady,registry.whenContentReady({timeout:
 void updateNotice.check();
 window.addEventListener('beforeunload',event=>registry.beforeUnload(event));
 window.addEventListener('pagehide',event=>{if(event.persisted)return;statusPollClosed=true;startupNavigation.dispose();configRefresh.close();updateNotice.dispose();consoleAuth.dispose();clearTimeout(statusPollTimer);panelRefresh.close();panelRecovery?.dispose();destructiveFeedback.dispose();navigationPreferenceObserver.disconnect();compactViewport.removeEventListener('change',syncNavigationCollapse);sse.close();registry.dispose();accountSwitcher?.dispose();});
-window.qqAgentShell?.onPrepareLeave?.(async()=>{try{await registry.flush();return{ok:true};}catch(error){toast(error.message,'error');return{ok:false,error:error.message};}});
 export {confirm,toast,state};

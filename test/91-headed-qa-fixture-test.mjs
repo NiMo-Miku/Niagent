@@ -47,7 +47,6 @@ test('headed QA uses real default services with isolated synthetic OneBot, model
   await until(() => fixture.wss.clients.size === 1 && kernel.transport.status().selfId === '900001', 'real default OneBot connected');
 
   await t.test('production copy, seed, console auth, models and binary media are real', async () => {
-    assert.equal(fs.readFileSync(path.join(fixture.appRoot, 'electron', 'main.js'), 'utf8'), fs.readFileSync(path.join(workspace, 'electron', 'main.js'), 'utf8'));
     for (const [name, id] of [['transport.provider', 'transport-onebot'], ['media.reader', 'media-service'], ['memory.consolidate', 'memory-service'], ['reminders.service', 'reminders']]) {
       assert.equal(kernel.capability.providers(name)[0]?.ownerId, id);
       assert.ok(kernel.services.get(name), name);

@@ -10,11 +10,9 @@ import {EventEmitter} from 'node:events';
 import {createRequire} from 'node:module';
 import {createSettingsSaveLifecycleController} from '../src/console/settings-save-lifecycle.js';
 import {createSettingsSaveLifecycle,SETTINGS_KEEPALIVE_BYTES,SETTINGS_LEASE_KEY} from '../ui/shell/settings-save-lifecycle.js';
-import {createRendererLeave} from '../electron/renderer-leave.js';
 import {RpcBridge} from '../ui/shell/rpc-bridge.js';
 import {PanelRegistry} from '../ui/shell/panel-registry.js';
 import {createApplication} from '../src/kernel/composition.js';
-import {startElectron,stopElectron} from '../electron/main.js';
 
 const source=path.resolve(import.meta.dirname,'..'),root=fs.mkdtempSync(path.join(os.tmpdir(),'qqa-save244-'));
 const index=process.argv.indexOf('--evidence-dir'),evidence=index<0?path.join(source,'.qa-local/v04-parity-20261016/save244'):path.resolve(process.argv[index+1]);fs.mkdirSync(evidence,{recursive:true});
@@ -133,25 +131,6 @@ try{
     const code=fs.readFileSync(path.join(source,'ui/panels/panel-client.js'),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'')+';globalThis.client={onBeforeLeave,onLeave};';
     const context={window,parent,location:{origin:'http://synthetic244'},setTimeout,clearTimeout,Event,CustomEvent:class{},setRefreshInterval(){},panelApiRequestTimeout:()=>15000,resetDestructiveActions(){}};vm.runInNewContext(code,context);
     const receive=data=>handlers.get('message')({source:parent,origin:'http://synthetic244',data}),meta={nonce:'a'.repeat(32),panel:'settings'};receive({jsonrpc:'2.0',method:'panel.init',params:meta});let fails=true,disposed=0;context.client.onBeforeLeave(()=>{if(fails)throw Error('blocked244');});context.client.onLeave(()=>{disposed++;});
-    receive({jsonrpc:'2.0',method:'panel.leave',params:{flushId:'one'},meta});await new Promise(resolve=>setImmediate(resolve));assert.equal(sent.at(-1).params.ok,false);assert.equal(disposed,0);
-    fails=false;receive({jsonrpc:'2.0',method:'panel.leave',params:{flushId:'two'},meta});await new Promise(resolve=>setImmediate(resolve));assert.equal(sent.at(-1).params.ok,true);assert.equal(disposed,1);
-  });
-  await check('desktop handshake pins source/main-frame/request id and cancels failure or timeout',async()=>{
-    const sent=[],contents={mainFrame:{},send:(...args)=>sent.push(args)},win={webContents:contents,isDestroyed:()=>false},controller=createRendererLeave({getWindow:()=>win,timeout:20}),event={sender:contents,senderFrame:contents.mainFrame};controller.register(event);
-    const saving=controller.prepare('quit');controller.acknowledge({...event,senderFrame:{}},{requestId:sent.at(-1)[1].requestId,ok:true});controller.acknowledge(event,{requestId:'stale',ok:true});controller.acknowledge(event,{requestId:sent.at(-1)[1].requestId,ok:false,error:'disk244'});assert.deepEqual(await saving,{ok:false,error:'disk244'});
-    const retry=controller.prepare('quit');controller.acknowledge(event,{requestId:sent.at(-1)[1].requestId,ok:true});assert.deepEqual(await retry,{ok:true});assert.equal((await controller.prepare('reload')).ok,false);
-    const pending=controller.prepare('quit');contents.mainFrame={};controller.acknowledge({sender:contents,senderFrame:contents.mainFrame},{requestId:sent.at(-1)[1].requestId,ok:true});assert.equal((await pending).ok,false);
-  });
-  await check('production Electron quit waits for renderer receipt; failed receipt retains window and kernel; tray close keeps running',async()=>{
-    const previous=process.env.QQ_AGENT_DATA_DIR;process.env.QQ_AGENT_DATA_DIR=path.join(root,'electron-data');const ipcMain=new EventEmitter();ipcMain.handle=()=>{};ipcMain.removeHandler=()=>{};const sent=[],order=[],dialogs=[];let stops=0,hides=0,closeToTray=true;
-    class Window extends EventEmitter{constructor(){super();this.destroyed=false;this.contents=new EventEmitter();this.contents.mainFrame={url:''};this.contents.isDestroyed=()=>this.destroyed;this.contents.setWindowOpenHandler=()=>{};this.contents.send=(channel,body)=>{sent.push({channel,body});order.push('request');};}get webContents(){return this.contents;}isDestroyed(){return this.destroyed;}async loadURL(url){this.contents.mainFrame={url};}show(){}hide(){hides++;}destroy(){this.destroyed=true;order.push('destroy');this.contents.emit('destroyed');this.emit('closed');}}
-    const app=new EventEmitter();Object.assign(app,{isPackaged:false,paths:{appData:path.join(root,'electron-appdata')},getPath(name){return this.paths[name]??root;},setPath(name,value){this.paths[name]=value;},requestSingleInstanceLock:()=>true,whenReady:async()=>{},quit(){order.push('quit');}});const electron={app,ipcMain,BrowserWindow:Window,session:{defaultSession:{setProxy:async()=>{},setPermissionRequestHandler(){}}},shell:{openExternal(){}},dialog:{showErrorBox:(...args)=>dialogs.push(args)}};
-    try{
-      const desktop=await startElectron(electron,{createKernel:()=>({config:{get:()=>({server:{token:'synthetic244',closeToTray}})},start:async()=>42440,stop:async()=>{stops++;order.push('stop');},bus:{emit(){}}})}),win=desktop.window,contents=win.webContents,event={sender:contents,senderFrame:contents.mainFrame};ipcMain.emit('qq-agent:leave-ready',event);
-      let prevented=false;win.emit('close',{preventDefault(){prevented=true;}});assert.equal(prevented,true);assert.equal(hides,1);assert.equal(stops,0);assert.equal(sent.length,0);
-      const failed=stopElectron(electron);assert.equal(win.destroyed,false);assert.equal(stops,0);ipcMain.emit('qq-agent:leave-result',event,{requestId:sent.at(-1).body.requestId,ok:false,error:'synthetic failure244'});assert.equal((await failed).ok,false);assert.equal(win.destroyed,false);assert.equal(stops,0);assert.match(dialogs.at(-1)[1],/synthetic failure244/);
-      const success=stopElectron(electron);assert.equal(stops,0);assert.equal(win.destroyed,false);ipcMain.emit('qq-agent:leave-result',event,{requestId:sent.at(-1).body.requestId,ok:true});assert.deepEqual(await success,{ok:true});assert.equal(stops,1);assert.deepEqual(order.slice(-4),['request','destroy','stop','quit']);
-    }finally{if(previous===undefined)delete process.env.QQ_AGENT_DATA_DIR;else process.env.QQ_AGENT_DATA_DIR=previous;}
   });
   if(httpOnly){
     await check('actual authenticated lifecycle HTTP uses ordinary guarded disk write and rejects stale/source/raw/token bypass',async()=>{

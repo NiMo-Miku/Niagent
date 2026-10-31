@@ -1,5 +1,5 @@
 // Host-only two-phase reset. No plugin capability exposes this coordinator.
-// Chromium owns files below electron-user-data until the process exits. Keep the
+// A crashed process may still own files in the old directory. Keep the
 // entire old directory intact until the next process can remove it safely.
 import fs from 'node:fs';
 import path from 'node:path';

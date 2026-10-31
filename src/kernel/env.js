@@ -25,7 +25,7 @@ export function resolveProfile(env = process.env) {
 
 /**
  * 数据目录优先级（SPEC §4.5）：QQ_AGENT_DATA_DIR 环境变量 > 项目内 data<后缀>。
- * （打包 exe 形态的"exe 旁目录 + %APPDATA% 旧数据搬回"在 electron/main.js 里做，M4。）
+ * （无头/浏览器控制台形态：数据目录始终由 env 或 profile 决定。）
  */
 export function resolveDataDir(env = process.env, appRoot = APP_ROOT) {
   const profile = resolveProfile(env);

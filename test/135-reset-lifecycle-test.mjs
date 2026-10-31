@@ -11,7 +11,6 @@ import { createHash } from 'node:crypto';
 import { createKernel } from '../src/kernel/kernel.js';
 import { buildDefaultConfig } from '../src/kernel/config.js';
 import { completePendingDataReset, createDataResetCoordinator } from '../src/kernel/data-reset.js';
-import { configureUserData } from '../electron/main.js';
 import { detectMigrationSource } from '../src/kernel/migrator.js';
 
 const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -65,14 +64,14 @@ if (process.env.QA135_WORKER === '1') {
     stop() { calls.managedStops = (calls.managedStops || 0) + 1; managedTimer?.stop(); },
   }) }, { lifecycle: true });
   kernel.log.setLevel('error'); await kernel.start();
-  const locked = path.join(dataDir, 'electron-user-data', 'Cache', 'Cache_Data', 'data_0');
+  const locked = path.join(dataDir, 'locked-cache', 'Cache', 'Cache_Data', 'data_0');
   fs.mkdirSync(path.dirname(locked), { recursive: true }); fs.writeFileSync(locked, 'QA135 locked Chromium cache');
   const originalRm = fs.rmSync, originalCp = fs.cpSync;
   let rmAttempts = 0;
   fs.rmSync = function (target, ...args) {
     const resolved = path.resolve(String(target));
-    if (resolved === dataDir || resolved.startsWith(path.join(dataDir, 'electron-user-data'))) {
-      rmAttempts++; throw Object.assign(new Error('QA135 locked Electron cache'), { code: 'EPERM' });
+    if (resolved === dataDir || resolved.startsWith(path.join(dataDir, 'locked-cache'))) {
+      rmAttempts++; throw Object.assign(new Error('QA135 locked cache file'), { code: 'EPERM' });
     }
     return originalRm.call(this, target, ...args);
   };
@@ -244,12 +243,5 @@ if (process.env.QA135_WORKER === '1') {
     assert.throws(() => createKernel(kernelOptions(f.appRoot, f.dataDir)), /清理锁无法独占.*确认其进程已退出.*管理员移除/);
     assert.deepEqual(tree(f.dataDir), before); assert.ok(fs.existsSync(marker(f))); assert.ok(fs.existsSync(f.reset.backupDir));
     fs.rmSync(claim); assert.equal(completePendingDataReset({ dataDir: f.dataDir, defaults: buildDefaultConfig() }).completed, true);
-  });
-  test('Electron consumes pending before selecting or opening its userData, and uses the actual profile defaults', async t => {
-    const f = await pending(t), setPaths = [];
-    const app = { isPackaged: false, getPath: key => key === 'appData' ? path.join(f.root, 'own-appdata') : path.join(f.appRoot, 'electron.exe'), setPath(key, value) { assert.equal(fs.existsSync(f.ready.locked), false); assert.equal(fs.existsSync(marker(f)), false); setPaths.push([key, value]); } };
-    configureUserData(app, { QQ_AGENT_DATA_DIR: f.dataDir, QQ_AGENT_PROFILE: '3' }, f.appRoot);
-    assert.deepEqual(setPaths, [['userData', path.join(f.dataDir, 'electron-user-data')]]);
-    const defaults = JSON.parse(fs.readFileSync(path.join(f.dataDir, 'config.json'))); assert.equal(defaults.server.port, 3410); assert.equal(defaults.api.apiKey, ''); assert.equal(fs.existsSync(f.ready.locked), false);
   });
 }

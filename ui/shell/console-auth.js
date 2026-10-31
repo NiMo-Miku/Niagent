@@ -12,11 +12,9 @@ export async function createConsoleAuth(win=window){
   const clear=()=>{try{win.sessionStorage.removeItem(CONSOLE_SESSION_KEY);}catch{/* storage may be unavailable */}};
   const url=new URL(win.location.href),explicit=url.searchParams.has('token');
   let token='',verified=false,revision=0,pending=null,disposed=false;
-  const desktop=typeof win.qqAgentShell?.getConsoleToken==='function';
   const local=/^http:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/.test(origin);
-  let autoAvailable=desktop||local;
+  let autoAvailable=local;
   async function bootstrap(controller,setAvailability){
-    if(desktop){const value=await win.qqAgentShell.getConsoleToken();return validToken(value)?value:'';}
     if(!local||typeof win.fetch!=='function')throw new Error('自动连接不可用');
     const response=await win.fetch('/api/console/bootstrap',{
       method:'POST',mode:'same-origin',credentials:'omit',cache:'no-store',referrerPolicy:'same-origin',
@@ -55,8 +53,6 @@ export async function createConsoleAuth(win=window){
     token=url.searchParams.get('token')||'';clear();
     url.searchParams.delete('token');
     win.history.replaceState(null,'',`${url.pathname}${url.search}${url.hash}`);
-  }else if(desktop){
-    await fetchCredential(); // IPC remains authoritative on desktop.
   }else{
     let cached='';
     try{
@@ -77,7 +73,7 @@ export async function createConsoleAuth(win=window){
     },
     // Persist only after the real console API has authenticated the credential.
     confirm(){
-      verified=true;if(desktop||!token)return;
+      verified=true;if(!token)return;
       try{win.sessionStorage.setItem(CONSOLE_SESSION_KEY,JSON.stringify({version:1,origin,token,expiresAt:Date.now()+CONSOLE_SESSION_TTL_MS}));}catch{/* unavailable storage does not block this document */}
     },
     invalidate(error){

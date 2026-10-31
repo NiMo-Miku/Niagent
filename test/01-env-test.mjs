@@ -2,10 +2,11 @@
 import { ok, eq, section, summary, mktmp } from './helpers.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { APP_ROOT, resolveProfile, resolveDataDir } from '../src/kernel/env.js';
 
 section('APP_ROOT 锚定（非 cwd）');
-ok(APP_ROOT.endsWith(path.join('v0.5')), `APP_ROOT 应是仓库根，实际 ${APP_ROOT}`);
+eq(APP_ROOT, path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), `APP_ROOT 应是项目根，实际 ${APP_ROOT}`);
 ok(fs.existsSync(path.join(APP_ROOT, 'package.json')), 'APP_ROOT 下应有 package.json');
 
 section('PROFILE 解析（SPEC §2.1：非 1 → data-<n> + 端口 +100×n）');
