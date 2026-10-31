@@ -158,7 +158,7 @@ export function createKernel({
     bus.emit('transport.status', transportStatusSnapshot);
     bus.emit('onebot.status', transportStatusSnapshot);
   };
-  const actionFacade = serviceFacade(() => services?.get('transport.provider')?.actions, ['poke', 'recall', 'getChatInfo', 'getMembers', 'getGroupMemberInfo', 'getForward', 'getVideo', 'getFile', 'getRecord', 'getImage', 'listGroups', 'listFriends', 'getGroupMembers', 'getGroupName', 'getSelfMemberInfo', 'addCustomFace', 'modifyCustomFace', 'deleteCustomFace', 'fetchCustomFaces', 'fetchCustomFaceDetails','getModerationMember','getModerationMembers','moderateGroup'], { label: '协议动作' });
+  const actionFacade = serviceFacade(() => services?.get('transport.provider')?.actions, ['poke', 'recall', 'getChatInfo', 'getMembers', 'getGroupMemberInfo', 'getForward', 'getVideo', 'getFile', 'getRecord', 'getImage', 'listGroups', 'listFriends', 'getGroupMembers', 'getGroupName', 'getSelfMemberInfo', 'addCustomFace', 'modifyCustomFace', 'deleteCustomFace', 'fetchCustomFaces', 'fetchCustomFaceDetails','getModerationMember','getModerationMembers','moderateGroup','setFriendAddRequest'], { label: '协议动作' });
   const transport = serviceFacade(() => services?.get('transport.provider'), ['send', 'toPlatformSegments', 'reconnect'], { label: '传输', properties: ['id', 'selfId', 'selfNickname', 'segmentSupport', 'everConnected'] });
   const currentSelfId = () => transport.selfId === undefined ? selfId : transport.selfId;
   const transportView = Object.freeze({ ...transport, actions: actionFacade,
@@ -189,6 +189,12 @@ export function createKernel({
       select(input = {}) { return personaWriter.select(input, sdk.consumerIdentity()); },
     }),
     'persona.read': Object.freeze({ read: () => personaWriter.read(), resolve: (chatKey) => personaWriter.resolve(chatKey) }),
+    // 任务三（2026-10-31）：群成员身份查询——内部复用 moderation.member（get_group_member_info）。
+    // 入参兼容 chatKey（group:数字/private:数字 取末段）与裸群号。
+    'chat.member-info': Object.freeze({ member: (chatKeyOrGroup, ...rest) => {
+      const group = String(chatKeyOrGroup).includes(':') ? String(chatKeyOrGroup).split(':').pop() : String(chatKeyOrGroup);
+      return services?.get('transport.provider')?.actions?.getModerationMember(group, ...rest);
+    } }),
     'host.environment': Object.freeze({ appRoot, dataDir, version: VERSION, profile, ...(extensionRoot!==appRoot?{extensionRoot}:{}) }),
     'host.defaults': Object.freeze({ communityMarket: injectedCommunityMarket }),
     'data.messages': pick(store, ['recent', 'findByMid', 'updateByMid', 'listChats']),

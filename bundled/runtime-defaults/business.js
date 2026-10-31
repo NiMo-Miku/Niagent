@@ -111,6 +111,19 @@ export async function handleProviderEvent({ kind, id, type, event }, { ingest, o
     if (result.accepted && active()) await orchestrator.onIncoming(result.chatKey, result.entry);
     return;
   }
+  if (type === 'friend_request') {
+    // 好友申请（任务三，2026-10-31）：确定性分发给 friend.request 能力（claimAsync，
+    // 按注册序第一个认领者获胜）。无人认领 → 只记日志留待人工/协议端处理，绝不自动同意。
+    const userId = String(event?.user_id ?? '').trim();
+    const flag = String(event?.flag ?? '').trim();
+    if (userId && flag) {
+      const claimed = await capability?.claimAsync?.('friend.request', { kind: 'friend', userId, comment: String(event?.comment ?? ''), flag, signal });
+      if (!claimed) log.info?.(`[kernel] 好友申请暂无插件处理（QQ:${userId}），留待人工在协议端处理`);
+    } else {
+      log.warn?.('[kernel] 收到好友申请事件但 user_id/flag 缺失，已忽略');
+    }
+    return;
+  }
   if (type === 'recall') {
     const chatKey = `${kind}:${id}`;
     if (event.message_id != null) { store.markRecalled(chatKey, Number(event.message_id)); bus.emit('chat.update', chatKey); }

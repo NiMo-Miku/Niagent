@@ -291,7 +291,7 @@ const send = ctx.capability('core.send');
 const receipt = await send.sendTextBatch(execution.chatKey, '完成', { signal: execution.signal });
 ```
 
-**宿主消费的提供者能力（注册即生效，无独立 scope，但要有真实行为）**：`ctx.registerCapability('ingest.intercept', handler)` —— 宿主在每条消息入库后、唤醒判定前咨询（2026-10-31 新增）。handler 收到 `{chatKey, entry, markRead(), signal}`（entry 为存档条目的脱敏副本），返回真值=认领：宿主不再排唤醒/建会话，你自行经 ctx.send 发送并保证已读语义（宿主认领后也会保底标已读）；返回 falsy=放行。**必须快速返回**（整体 10 秒超时后按不认领放行）；抛错等同不认领（记日志）。全局暂停时不被调用；插件停用/热重载后旧提供者自动失效。多提供者按注册序第一个认领者获胜；拍一拍不走该拦截。官方用例见 trpg-dice（`.r 1d100` 零 token 直发）。
+**宿主消费的提供者能力（注册即生效，无独立 scope，但要有真实行为）**：`ctx.registerCapability('friend.request', handler)` —— 宿主把 OneBot 好友申请事件确定性转发进来（2026-10-31 新增，不经模型）。handler 收到 `{kind:'friend', userId, comment, flag, signal}`（comment 为验证消息原文，由消费方自行 trim；flag 是不透明串，只能经 `transport.actions.setFriendAddRequest` 原样回传）。返回真值=认领；多提供者按注册序第一个认领者获胜，无人认领时宿主只记日志、绝不自动同意；提供者抛错被跳过不连累后续。`ctx.registerCapability('ingest.intercept', handler)` —— 宿主在每条消息入库后、唤醒判定前咨询（2026-10-31 新增）。handler 收到 `{chatKey, entry, markRead(), signal}`（entry 为存档条目的脱敏副本），返回真值=认领：宿主不再排唤醒/建会话，你自行经 ctx.send 发送并保证已读语义（宿主认领后也会保底标已读）；返回 falsy=放行。**必须快速返回**（整体 10 秒超时后按不认领放行）；抛错等同不认领（记日志）。全局暂停时不被调用；插件停用/热重载后旧提供者自动失效。多提供者按注册序第一个认领者获胜；拍一拍不走该拦截。官方用例见 trpg-dice（`.r 1d100` 零 token 直发）。
 
 函数能力用 `ctx.capability(name,...args)`；对象能力先获取对象再 await 方法。普通宿主 facade 可能存在但方法目标尚未就绪，调用会明确抛错；hasCapability 为真也不保证配置齐全、权限已批或网络可达。缺失的自定义能力可得到 undefined，写软依赖必须给回退；硬依赖使用 manifest.requires/工具 requires。单提供者优先活跃非 default，管理员可指定 owner；同优先级保持注册顺序。多提供者的 `llm.request-params/llm.response/llm.usage/llm.retry-advisor/tool.guard/media.download` 由宿主按各自链式/认领合同消费，普通 ctx.capability 不等于“调用全部”。
 
@@ -314,6 +314,7 @@ const receipt = await send.sendTextBatch(execution.chatKey, '完成', { signal: 
 | `extensions.state` | isActive(id)/isEnabled(id) | fs.namespace；videoFrames 只给具名默认服务 |
 | `tools.catalog` | list() | fs.namespace；只读清单，不能执行其它扩展的工具 |
 | `persona.write` | write({chatKey\|null, fields}) 与 select({chatKey\|null, personaId})。write → `{ok,scope,chatKey,applied,cleared,unified,effective}`。chatKey 为 null 写全局 persona；`group:数字`/`private:数字` 写 personaByChat。fields 白名单 roleText/customRules/systemPromptOverride（长度 20000/4000/20000）；空串或 null=清除该字段（会话级删键，清空即删条目）；botName/selfNickname/participation 及未知键 403，超长 400。会话级覆盖仅当控制台关闭「所有会话使用统一人设」（personaUnified=false）才参与提示词，effective/unified 如实返回，宿主不代为翻转该开关。select 按人设库切换（出厂 xiaojingyu/custom_*，语义同控制台「选择」：全局=采用模板并清 systemPromptOverride+记模板指针；会话级=清 override/participation 回归继承并记模板指针；personaId 为 null 仅限会话级=移除整条覆盖跟随全局；未知 id 404）。每次写入/切换落审计日志（调用方/目标/字段名或 personaId，无正文） | persona.write（用户默认 ask，headless=deny） |
+| `chat.member-info` | member(chatKey 或裸群号, userId, {signal?}) → `{userId, role:'owner'\|'admin'\|'member', nickname, card, joinTime}`；机器人自身权限校验等管理动作仍在 moderation 族 | data.sessions.read + net.outbound |
 | `persona.read` | read() → `{unified, global:{字段:{set,chars},templateId}, chats:[{chatKey,legacy,templateId,fields}]}` 摘要；resolve(chatKey) → 该会话生效字段的 `{字段:{set,chars}}`。均不含人格正文 | persona.read（普通扩展默认 allow） |
 
 数据业务的完整内部写入形状随业务仓而异；上述列表**不授权 AI 猜测未展开方法的参数**。本手册的常见技能不依赖这些高级写入；需要它们时使用专门业务范例或补充明确合同与测试。旧仓全量对象、任意模型循环启动/恢复服务、任意工具执行器不是当前公共 SDK。
@@ -335,6 +336,7 @@ const receipt = await send.sendTextBatch(execution.chatKey, '完成', { signal: 
 | `addCustomFace(file)` | `{emojiId:string}`，必须协议确认 | qq.send |
 | `modifyCustomFace(emojiId,desc)`、`deleteCustomFace(emojiId)` | `{ok:boolean}`，必须检查 ok | qq.send |
 | `poke(chatKey,{groupId?,userId})`、`recall(messageId)` | 默认 poke 返回 true；recall 成功返回 undefined | qq.send |
+| `setFriendAddRequest({flag,approve})` | `{ok:true}`；同意/拒绝好友申请。flag 是 OneBot 不透明串，必须用 friend.request 载荷里的原值回传，不得自造或存中间态 | qq.send |
 
 这里没有 `call('set_group_ban',...)` 或登录身份查询。并非所有旧 OneBot 功能都已映射，详见对照表。部分旧式查询实现没有自己的 signal 参数，facade 会使取消后的消费者拒绝并丢弃旧结果，但不能宣称底层远端请求均被强制中断。
 

@@ -72,7 +72,7 @@ const METHODS = {
   'data.reminders': ['add', 'due', 'pending', 'markFired', 'cancel', 'updatePendingTexts', 'prune'],
   'data.stickers': ['all', 'get', 'list', 'note', 'markUsed', 'collect', 'mergeFromQQ', 'controlledLocal', 'ensureSendable', 'collectIntoQQ', 'syncFromQQ'],
   'core.send': ['sendTextBatch', 'sendImage', 'sendSticker', 'sendSegments', 'poke'],
-  'transport.actions': ['getForward', 'getVideo', 'getFile', 'getRecord', 'getImage', 'getChatInfo', 'getMembers', 'getGroupMembers', 'getGroupMemberInfo', 'getGroupName', 'listGroups', 'listFriends', 'fetchCustomFaces', 'fetchCustomFaceDetails', 'addCustomFace', 'modifyCustomFace', 'deleteCustomFace', 'poke', 'recall'],
+  'transport.actions': ['getForward', 'getVideo', 'getFile', 'getRecord', 'getImage', 'getChatInfo', 'getMembers', 'getGroupMembers', 'getGroupMemberInfo', 'getGroupName', 'listGroups', 'listFriends', 'fetchCustomFaces', 'fetchCustomFaceDetails', 'addCustomFace', 'modifyCustomFace', 'deleteCustomFace', 'poke', 'recall', 'setFriendAddRequest'],
   'media.reader': ['image', 'imageParts', 'probe', 'framesAvailable'],
   'web.search': ['search', 'fetchPage', 'lockState'], 'llm.client': ['complete'],
   'process.mcp': ['startServer', 'stopAll', 'redactError'], 'host.feedback': ['report'],
@@ -84,6 +84,7 @@ const METHODS = {
   'extensions.state': ['isActive', 'isEnabled', 'videoFrames'], 'extensions.installZip': ['install'], 'tools.catalog': ['list'],
   'runtime.reminders': ['start', 'stop'],
   'persona.write': ['write', 'select'], 'persona.read': ['read', 'resolve'],
+  'chat.member-info': ['member'],
 };
 const WRITE_METHODS = new Set(['append', 'remove', 'updateByMid', 'markConsolidated', 'replaceMember', 'removeMember', 'clearChat', 'create', 'update', 'finish', 'add', 'markFired', 'cancel', 'updatePendingTexts', 'prune', 'note', 'markUsed', 'collect', 'mergeFromQQ']);
 const TRUSTED_METHODS = {
@@ -193,6 +194,7 @@ export function createSdkAccess({ config, permissions, loaderOf = () => null, fa
     if (name === 'memory.consolidate') return ['net.outbound', 'data.memory.read', 'data.sessions.read', 'fs.outsideNamespace'];
     if (name === 'persona.write') return ['persona.write'];
     if (name === 'persona.read') return ['persona.read'];
+    if (name === 'chat.member-info') return ['data.sessions.read', 'net.outbound']; // 与 getGroupMemberInfo 同口径
     if (name === 'qq.emoji-favorites') return method === 'getAccountIdentity' ? ['data.sessions.read'] : ['fetchCustomFaces', 'fetchCustomFaceDetails'].includes(method) ? ['data.sessions.read', 'net.outbound'] : ['qq.send', 'net.outbound'];
     if (name === 'mcp.tools') return ['list', 'stop', 'stopServer'].includes(method) ? ['fs.namespace'] : ['proc.exec', 'mcp.connect'];
     if (name === 'data.stickers' && ['ensureSendable', 'collectIntoQQ'].includes(method)) return method === 'collectIntoQQ' ? ['qq.send', 'net.outbound'] : ['net.outbound'];

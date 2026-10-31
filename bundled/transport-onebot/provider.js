@@ -113,6 +113,8 @@ export function createOneBotProvider({ cfg, log = console, onEvent, onStatus, to
       }
     }
     if(postType==='request'&&raw.request_type==='group'&&raw.sub_type==='add')eventSink?.({kind:'group',id:String(raw.group_id??''),type:'join_request',event:raw});
+    // 好友申请（本体开发移交引索.md 任务三，2026-10-31）：OneBot flag 是不透明串，原样透传不落中间态。
+    if(postType==='request'&&raw.request_type==='friend')eventSink?.({kind:'friend',id:String(raw.user_id??''),type:'friend_request',event:raw});
   }
 
   return {
@@ -215,6 +217,14 @@ export function createOneBotProvider({ cfg, log = console, onEvent, onStatus, to
           await client.call('friend_poke', { user_id: Number(userId ?? chatKey.split(':').pop()) });
         }
         return true;
+      },
+      /** 同意/拒绝好友申请（任务三）。OneBot 的 flag 是不透明串：原样回传，绝不存中间态替代。 */
+      async setFriendAddRequest({ flag, approve } = {}) {
+        if (typeof flag !== 'string' || !flag || flag.length > 500) throw new Error('好友申请标识无效');
+        if (typeof approve !== 'boolean') throw new Error('approve 须为布尔（true=同意，false=拒绝）');
+        const res = await client.call('set_friend_add_request', { flag, approve });
+        if ((res?.status != null && res.status !== 'ok') || (res?.retcode != null && res.retcode !== 0 && res.retcode !== '0')) throw new Error('协议端未确认好友申请处理成功');
+        return { ok: true };
       },
       async recall(messageId) { await client.call('delete_msg', { message_id: Number(messageId) }); },
       async getChatInfo(chatKey) {

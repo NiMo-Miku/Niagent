@@ -97,10 +97,13 @@ HTTP、发送及用户能力方法在授权等待和执行阶段都检查身份�
 | `process.mcp` | `startServer/stopAll/redactError`；不提供原生 child。 |
 | `extensions.state` | `isActive/isEnabled`；具名 media-service 可只读 `videoFrames()` 的 `{enabled,frames}`，保留旧视频帧设置。 |
 | `host.feedback` | 只通过 `report(payload)` 提交反馈。 |
+| `chat.member-info` | `member(chatKey 或裸群号, userId, {signal?})` 群成员身份（owner/admin/member、名片、入群时间）；复用 moderation.member。scope `data.sessions.read`+`net.outbound`。 |
 | `persona.write` | `write({chatKey\|null, fields})`（白名单字段 roleText/customRules/systemPromptOverride，空串=清除）与 `select({chatKey\|null, personaId})`（按人设库切换，`personaId:null` 仅限会话级=移除覆盖跟随全局）。会话级覆盖仅当宿主处于分会话人设模式（personaUnified=false）参与提示词，返回值 `unified/effective` 如实标注；每次调用落审计日志（调用方/目标/字段名，无正文）。scope `persona.write`：用户插件默认 ask，headless=deny；捆绑插件默认 allow（仍须清单声明）。 |
 | `persona.read` | `read()` 返回摘要 `{unified, global, chats[]}`（在位标记/字数/模板指针，不含正文）；`resolve(chatKey)` 返回该会话生效字段合成视角。scope `persona.read`：普通扩展默认 allow，仍须声明。 |
 
 完整的方法白名单和权限映射在 `src/kernel/sdk-services.js`。普通用户插件的方法按 scope 异步授权，并复制、脱敏结果；默认插件只有具名方法绑定保留必要的同步行为。数据读取不会把底层仓对象交给插件，工具执行上下文中的 send/store/memory/transport 等也是这些 facade。
+
+宿主还会把 OneBot 好友申请事件确定性转发给注册了 `friend.request` 能力的插件（载荷 `{kind:'friend',userId,comment,flag,signal}`，按注册序第一个认领者获胜；flag 只能经 `transport.actions.setFriendAddRequest` 原样回传），无人认领时宿主绝不自动同意。
 
 `mcp.service`、`reminders.service`、`telemetry.service` 仅由宿主管理，SDK 消费会被明确拒绝；市场、社区与记忆整理的业务入口也不提供 `create/start/stop`。调用业务方法需要消费插件自己的授权，不能借默认提供者的权限。默认服务内部的 HTTP 同样受消费者的取消约束；宿主自行创建、启动和停止的后台服务保留独立生命周期。第三方自定义能力仍使用双方约定的接口。
 

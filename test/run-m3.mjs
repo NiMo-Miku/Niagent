@@ -106,6 +106,8 @@ files.push('308-plugin-config-page-test.mjs');
 files.push('309-prompt-preview-test.mjs');
 files.push('310-persona-write-test.mjs');
 files.push('311-trpg-dice-ingest-intercept-test.mjs');
+files.push('312-friend-request-test.mjs');
+files.push('313-friend-approval-e2e-test.mjs');
 files.push('293-settings-intuitive-autosave-test.mjs', '294-settings-layout-refinement-test.mjs', '296-theme-personalization-test.mjs', '297-interface-motion-preferences-test.mjs', '298-appearance-editor-integration-test.mjs', '299-upstream-ui-migration-test.mjs');
 files.push('300-press-feedback-test.mjs');
 files.push('301-ripple-personalization-test.mjs','302-realtime-stream-test.mjs','303-live-pages-test.mjs','304-modal-visual-matrix-test.mjs');
