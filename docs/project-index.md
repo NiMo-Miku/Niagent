@@ -230,7 +230,7 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 - 运行器:`run-all.mjs`(`npm test`)= **run-m3 + run-m4**,逐文件 spawnSync,240s/120s 超时。M0–M2 链需手动 `node test/run-m2.mjs`(本日已全绿:M0 9/9、M1 15/15、M2 8/8、M4 7/7、smoke 13/13)。
 - 形态:两种风格(自绘断言 `test/helpers.mjs` / `node:test`);224 个 import 内核、约 70 个 playwright-core UI e2e、121 个起真内核、164 个源码静态契约断言。
 - 离线性极强:`ws` mock OneBot、http mock LLM、`page.route()` 拦截、假域名;浏览器测试可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指向 Edge/Chrome。
-- 本日新增:`308-plugin-config-page`(配置页端到端)、`309-prompt-preview`(提示词预览)、18/305/25 更新为延续语义。
+- 本日新增:`308-plugin-config-page`(配置页端到端)、`309-prompt-preview`(提示词预览)、`310-persona-write`(插件人格能力)、18/305/25 更新为延续语义。
 - 已知既有失败(HEAD 复现,浏览器环境相关,与当日改动无关):34、116、125、127、244、254、69。
 
 ## 13. website/ — 官网镜像(不随应用打包)
@@ -242,6 +242,8 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 ## 14. 扩展点速查
 
 **运行时插件 SDK ctx**(`plugin-loader.js` makeCtx):`registerTool` / `registerCapability` / `registerTransport` / `prompt.add` / `hooks.on`(before-context、before-llm-messages、after-response、before-tool、after-tool)/ `scheduler.every|at` / `send` / `http.fetch`(safe-fetch 闸)/ `storage` / `events.on|emit`(仅 blocklist-sync 可 emit)/ `ui.panel.register` / `permissions.status|request` / `config.get|all|onChange`(仅自己 configSchema 声明过的键)。
+
+**插件人格能力**(2026-10-31 本体开发任务一,组件 `core.persona.write`,实现在 `src/kernel/persona-write.js`):`ctx.capability('persona.write')` → `write({chatKey|null,fields})`(白名单 roleText/customRules/systemPromptOverride,空串=清除,越权 403/超长 400)+ `select({chatKey|null,personaId})`(按人设库切换,语义同控制台「选择」);`ctx.capability('persona.read')` → `read()` 摘要 + `resolve(chatKey)` 生效合成。scope `persona.write`(用户默认 ask/headless=deny)与 `persona.read`(默认 allow);审计日志不含正文;会话级覆盖生效仍受 personaUnified 门约束(返回值如实标注)。测试 `test/310-persona-write-test.mjs`。
 
 **面板侧(用户插件 ui/ 页面)**:`ctx.call`(自身工具)/ `ctx.getConfig` / **`ctx.setConfig`(schema 校验+密钥 hasXxx 保留/清除)** / `ctx.notify`。
 
@@ -278,4 +280,5 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 2. **浏览器环境既有测试失败**(HEAD 复现,与当日改动无关):34、116、125、127、244、254、69——多为测试夹具未跟上 UI 演进或 Edge 替代 Chromium 的差异,已列入完善清单。
 3. `progress.md` 为 UTF-8,cmd `type` 会乱码(编辑器/Read 正常)。
 4. 会话文档自述历史编号与测试数量只对应当时范围,不代表当前版本验收完成。
+5. 本机(Windows + Edge)环境注记(2026-10-31 本体开发日复核):M3 套件在本机存在大量环境性失败——已抽样验证 `55`、`62`(×2)、`87`(collect_sticker 可用性)、`132`、`173`(价格策略)、`211`、`215`(偶发)、`266`、`281` 等在 **HEAD 基线**上以相同断言失败,与当日改动无关;M0–M2(32 文件)与 M4(7 文件)在本机全绿。另一类系统性崩溃(子进程 0xC0000142 批量失败)由残留测试进程引发,清理 node/Edge 进程后重跑即消失。
 5. GitHub 推送直连不稳时,可走 `eo.gh-proxy.cn` 代理 + 内嵌令牌(本日已验证可用)。

@@ -16,6 +16,8 @@ const SCOPES = {
   'ui.panel': { bundled: 'allow', user: 'ask', askable: true, desc: '注册控制台面板' },
   'scheduler': { bundled: 'allow', user: 'allow', askable: true, desc: '常驻定时器' },
   'mcp.connect': { bundled: 'deny', user: 'ask', askable: true, desc: '连接外部 MCP server' },
+  'persona.read': { bundled: 'allow', user: 'allow', askable: true, desc: '读人格配置摘要（不含正文）' },
+  'persona.write': { bundled: 'allow', user: 'ask', askable: true, desc: '写入人格提示词（全局或会话级）' },
 };
 const BUNDLED_SCOPE_EXCEPTIONS = {
   'data.sessions.read': ['query-tools'],

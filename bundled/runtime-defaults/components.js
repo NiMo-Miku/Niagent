@@ -19,6 +19,7 @@ import { createUsageDayStore } from '../../src/kernel/usage-days.js';
 import { createReminderStore } from '../../src/kernel/reminders.js';
 import { createStickerManager } from '../../src/kernel/stickers.js';
 import { createIngest } from '../../src/kernel/ingest.js';
+import { createPersonaWriter } from '../../src/kernel/persona-write.js';
 import { resolveContextTier } from '../../src/kernel/wake.js';
 import { requestMemoryConsolidation } from '../../src/console/memory-media-adapters.js';
 import { readPersonaText, buildToolBundle, forwardLinkedMedia, handleProviderEvent } from './business.js';
@@ -66,7 +67,7 @@ export {
   createKernel, createLogger, createLogPolicy, buildDefaultConfig, createConfig, createCapabilityRegistry,
   createPermissions, createToolRegistry, createScheduler, createStorage, createPluginLoader,
   createHttpServer, createChatStore, createMemoryStore, createSessionRegistry, createUsageDayStore,
-  createReminderStore, createStickerManager, createIngest, createSendQueue, createOrchestrator,
+  createReminderStore, createStickerManager, createIngest, createPersonaWriter, createSendQueue, createOrchestrator,
   runAgent, buildSystemPrompt, buildUserPrompt, buildPastState, resolvePromptAnchor,
   chatCompletionWithRetry, resolveThinkingPolicy, createServiceHost, serviceFacade, createSdkAccess, safeFetch,
   detectMigrationSource, migrateFrom04, completePendingDataReset, createDataResetCoordinator,
@@ -130,6 +131,7 @@ export const defaultComponents = Object.freeze({
   'core.reply.rescue': rescueUnsentReply,
   'core.session.retryable': isRetryableError,
   'core.ingest': createIngest,
+  'core.persona.write': createPersonaWriter,
   'core.management': createGroupManagement,
   'core.send': createSendQueue,
   'core.orchestrator': createOrchestrator,

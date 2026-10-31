@@ -1,12 +1,14 @@
-// 05 · 权限模型：11 scope / 三层策略 / deny 类不可放行 / headless ask=deny / 触达即审计
+// 05 · 权限模型：13 scope / 三层策略 / deny 类不可放行 / headless ask=deny / 触达即审计
 import { ok, eq, section, summary } from './helpers.mjs';
 import { createPermissions } from '../src/kernel/permissions.js';
 
-section('scope 清单（DSH §7.1：11 个）');
+section('scope 清单（DSH §7.1：11 个 + persona.read/persona.write，本体开发任务一 2026-10-31）');
 const pm = createPermissions({ log: {} });
 const scopes = pm.scopes();
-eq(Object.keys(scopes).length, 11, '11 个 scope');
+eq(Object.keys(scopes).length, 13, '13 个 scope');
 ok(scopes['qq.send'] && scopes['net.raw'] && scopes['mcp.connect'], '关键 scope 在列');
+eq(scopes['persona.write'].user, 'ask', 'persona.write 用户默认 ask');
+eq(scopes['persona.read'].user, 'allow', 'persona.read 用户默认 allow');
 
 section('捆绑默认 allow / 用户默认 ask');
 eq(pm.check('reminders', 'qq.send', { kind: 'bundled' }).decision, 'allow', '捆绑 qq.send=allow');

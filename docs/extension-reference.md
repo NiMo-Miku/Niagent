@@ -156,6 +156,8 @@ export default {
 | `data.sessions.read` | 消息、会话、提醒、表情及部分传输查询 |
 | `data.memory.read` | 读取长期记忆 |
 | `fs.outsideNamespace` | 写公共业务数据仓、部分媒体文件读取等；不是读取其它用户秘密的许可 |
+| `persona.write` | 写人格提示词（全局或会话级，白名单字段）；用户插件默认 ask，无人在场（headless）时按拒绝处理 |
+| `persona.read` | 读人格配置摘要（不含正文）；普通扩展默认允许，仍须在清单声明 |
 | `proc.exec`、`mcp.connect` | 外部 MCP 子进程和连接；按方法可能同时需要 |
 | `fs.namespace`、`scheduler` | 自身 KV 与调度，普通扩展默认允许 |
 | `net.raw` | 受控宿主 API 不开放授权；不能用来取得原始 socket |
@@ -309,6 +311,8 @@ const receipt = await send.sendTextBatch(execution.chatKey, '完成', { signal: 
 | `host.config` | get()/onChange(fn) | 普通扩展仅自身 schema 设置；没有全局 update |
 | `extensions.state` | isActive(id)/isEnabled(id) | fs.namespace；videoFrames 只给具名默认服务 |
 | `tools.catalog` | list() | fs.namespace；只读清单，不能执行其它扩展的工具 |
+| `persona.write` | write({chatKey\|null, fields}) 与 select({chatKey\|null, personaId})。write → `{ok,scope,chatKey,applied,cleared,unified,effective}`。chatKey 为 null 写全局 persona；`group:数字`/`private:数字` 写 personaByChat。fields 白名单 roleText/customRules/systemPromptOverride（长度 20000/4000/20000）；空串或 null=清除该字段（会话级删键，清空即删条目）；botName/selfNickname/participation 及未知键 403，超长 400。会话级覆盖仅当控制台关闭「所有会话使用统一人设」（personaUnified=false）才参与提示词，effective/unified 如实返回，宿主不代为翻转该开关。select 按人设库切换（出厂 xiaojingyu/custom_*，语义同控制台「选择」：全局=采用模板并清 systemPromptOverride+记模板指针；会话级=清 override/participation 回归继承并记模板指针；personaId 为 null 仅限会话级=移除整条覆盖跟随全局；未知 id 404）。每次写入/切换落审计日志（调用方/目标/字段名或 personaId，无正文） | persona.write（用户默认 ask，headless=deny） |
+| `persona.read` | read() → `{unified, global:{字段:{set,chars},templateId}, chats:[{chatKey,legacy,templateId,fields}]}` 摘要；resolve(chatKey) → 该会话生效字段的 `{字段:{set,chars}}`。均不含人格正文 | persona.read（普通扩展默认 allow） |
 
 数据业务的完整内部写入形状随业务仓而异；上述列表**不授权 AI 猜测未展开方法的参数**。本手册的常见技能不依赖这些高级写入；需要它们时使用专门业务范例或补充明确合同与测试。旧仓全量对象、任意模型循环启动/恢复服务、任意工具执行器不是当前公共 SDK。
 

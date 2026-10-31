@@ -83,6 +83,7 @@ const METHODS = {
   'memory.consolidate': ['consolidate'],
   'extensions.state': ['isActive', 'isEnabled', 'videoFrames'], 'extensions.installZip': ['install'], 'tools.catalog': ['list'],
   'runtime.reminders': ['start', 'stop'],
+  'persona.write': ['write', 'select'], 'persona.read': ['read', 'resolve'],
 };
 const WRITE_METHODS = new Set(['append', 'remove', 'updateByMid', 'markConsolidated', 'replaceMember', 'removeMember', 'clearChat', 'create', 'update', 'finish', 'add', 'markFired', 'cancel', 'updatePendingTexts', 'prune', 'note', 'markUsed', 'collect', 'mergeFromQQ']);
 const TRUSTED_METHODS = {
@@ -190,6 +191,8 @@ export function createSdkAccess({ config, permissions, loaderOf = () => null, fa
       return ['net.outbound', 'data.sessions.read', 'fs.outsideNamespace'];
     }
     if (name === 'memory.consolidate') return ['net.outbound', 'data.memory.read', 'data.sessions.read', 'fs.outsideNamespace'];
+    if (name === 'persona.write') return ['persona.write'];
+    if (name === 'persona.read') return ['persona.read'];
     if (name === 'qq.emoji-favorites') return method === 'getAccountIdentity' ? ['data.sessions.read'] : ['fetchCustomFaces', 'fetchCustomFaceDetails'].includes(method) ? ['data.sessions.read', 'net.outbound'] : ['qq.send', 'net.outbound'];
     if (name === 'mcp.tools') return ['list', 'stop', 'stopServer'].includes(method) ? ['fs.namespace'] : ['proc.exec', 'mcp.connect'];
     if (name === 'data.stickers' && ['ensureSendable', 'collectIntoQQ'].includes(method)) return method === 'collectIntoQQ' ? ['qq.send', 'net.outbound'] : ['net.outbound'];
@@ -210,7 +213,8 @@ export function createSdkAccess({ config, permissions, loaderOf = () => null, fa
   function operationSignals(entry, args, contextSignal) {
     // Nested SDK calls retain the original consumer's cancellation chain.
     // Service-owned create/start/stop clears this context at the host boundary.
-    const signals = [entry.controller?.signal, contextSignal, consumerContext.getStore(), ...args.filter((item) => item && typeof item === 'object').map((item) => typeof item.addEventListener === 'function' && typeof item.aborted === 'boolean' ? item : item.signal)].filter(Boolean);
+    const consumerStore = consumerContext.getStore();
+    const signals = [entry.controller?.signal, contextSignal, consumerStore?.signal ?? consumerStore, ...args.filter((item) => item && typeof item === 'object').map((item) => typeof item.addEventListener === 'function' && typeof item.aborted === 'boolean' ? item : item.signal)].filter(Boolean);
     const controller = new AbortController(), cleanup = [];
     for (const signal of new Set(signals)) {
       const abort = () => controller.abort(signal.reason ?? new Error('操作已中止'));
@@ -317,7 +321,7 @@ export function createSdkAccess({ config, permissions, loaderOf = () => null, fa
             }
             if (typeof target?.[key] !== 'function') throw new Error('宿主服务 ' + name + '.' + key + ' 尚未就绪');
             const safeArgs = guardedCallbacks(name, key, args, valid);
-            const result = consumerContext.run(pending.controller.signal, () => target[key](...withSignal(name, key, safeArgs, pending.controller.signal)));
+            const result = consumerContext.run({ signal: pending.controller.signal, pluginId: entry.manifest.id }, () => target[key](...withSignal(name, key, safeArgs, pending.controller.signal)));
             const finish = (value) => {
               try { valid(); } catch (error) { if (name === 'process.mcp' && key === 'startServer') value?.stop?.(); throw error; }
               if (name === 'process.mcp' && key === 'startServer') return mcpConnection(entry, value, leases, state);
@@ -431,8 +435,11 @@ export function createSdkAccess({ config, permissions, loaderOf = () => null, fa
     } };
   }
   // Host-only: never copied into setup(ctx) or its execution contexts.
+  // The consumer store carries the abort signal plus the calling plugin id so
+  // host-side write paths can attribute their audit trail without new arguments.
   return { capabilityAccess, toolContext, callbackContext, providerContext, check,
-    consumerSignal: () => consumerContext.getStore() ?? null,
+    consumerSignal: () => { const store = consumerContext.getStore(); return store?.signal ?? store ?? null; },
+    consumerIdentity: () => { const store = consumerContext.getStore(); return store?.pluginId ? { pluginId: store.pluginId } : null; },
     withoutConsumerContext: action => consumerContext.run(null, action),
   };
 }

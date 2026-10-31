@@ -178,9 +178,17 @@ export function createKernel({
     };
   }
   Object.freeze(memoryAccess);
+  // 人设库只读视图：与控制台同一组件（可组合层替换），供 persona.write.select 解析模板。
+  const personaTemplateList = components['console.personaTemplates']({ config, personaText });
+  const personaWriter = construct('core.persona.write', { config, log, bus, templates: () => personaTemplateList.list().templates });
   let installZip = null;
   const facets = {
     'host.config': {},
+    'persona.write': Object.freeze({
+      write(input = {}) { return personaWriter.write(input, sdk.consumerIdentity()); },
+      select(input = {}) { return personaWriter.select(input, sdk.consumerIdentity()); },
+    }),
+    'persona.read': Object.freeze({ read: () => personaWriter.read(), resolve: (chatKey) => personaWriter.resolve(chatKey) }),
     'host.environment': Object.freeze({ appRoot, dataDir, version: VERSION, profile, ...(extensionRoot!==appRoot?{extensionRoot}:{}) }),
     'host.defaults': Object.freeze({ communityMarket: injectedCommunityMarket }),
     'data.messages': pick(store, ['recent', 'findByMid', 'updateByMid', 'listChats']),
