@@ -6,6 +6,8 @@ import { createMemoryStore } from '../src/kernel/memory.js';
 import { createSessionRegistry } from '../src/kernel/sessions.js';
 import { createSendQueue } from '../src/kernel/send.js';
 import { Bus } from '../src/kernel/bus.js';
+import { handleProviderEvent } from '../bundled/runtime-defaults/business.js';
+import { createCapabilityRegistry } from '../src/kernel/capability.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -224,5 +226,102 @@ await e11.orch.onIncoming('group:100', e11.store.recent('group:100', 1)[0]);
 const w11 = e11.orch.status().waiting.find((x) => x.chatKey === 'group:100');
 ok(w11 && w11.sessionId !== first11.id, '窗口关闭 → 新会话');
 e11.orch.stop();
+
+// ---- 唤醒前输入拦截（本体开发移交引索.md 任务二,2026-10-31）----
+// core.events(business.js handleProviderEvent) 在入库后、onIncoming 前咨询
+// ingest.intercept 提供者:认领→已读沉历史不排唤醒;不认领/异常/超时→放行;
+// 暂停→不调用;提供者停用/换代→活性探针失效不咨询。
+
+section('唤醒前拦截：认领 → 已读沉历史,不排唤醒不建会话');
+{
+  const dirI = mktmp('qqa-orch-intercept-');
+  const storeI = createChatStore({ dataDir: dirI, log: {} });
+  const busI = new Bus({ error: () => {}, warn: () => {} });
+  const registryI = createCapabilityRegistry({ log: {} });
+  const seen = [];
+  registryI.register('ingest.intercept', 'dice-plugin', (payload) => {
+    seen.push(payload);
+    payload.markRead();
+    return { handled: true };
+  });
+  const incoming = [];
+  const envI = makeEnv();
+  const fakeIngest = { ingestMessage: async () => ({ accepted: true, chatKey: 'group:100', entry: storeI.appendIncoming('group:100', { mid: 11, ts: Date.now(), senderId: '555', senderName: 'A', text: '.r 1d100' }) }) };
+  await handleProviderEvent({ kind: 'group', id: '100', type: 'message', event: {} }, {
+    ingest: fakeIngest, orchestrator: { onIncoming: async (k, e) => { incoming.push([k, e]); }, isPaused: () => false },
+    cfg: envI.orch ? (() => ({ commandMute: { enabled: false } })) : (() => ({ commandMute: { enabled: false } })),
+    config: { update() {} }, store: storeI, bus: busI, log: { info() {}, warn() {}, error() {} },
+    capability: registryI, selfIdOf: () => '999', forwardMedia: async () => ({}), signal: null, current: () => true,
+  });
+  eq(seen.length, 1, '提供者被咨询一次');
+  eq(seen[0].chatKey, 'group:100');
+  ok(typeof seen[0].markRead === 'function' && typeof seen[0].entry === 'object', '载荷含 chatKey/entry/markRead');
+  ok(seen[0].entry.text === '.r 1d100', 'entry 与存档条目同形');
+  seen[0].entry.text = '篡改副本'; eq(storeI.findByMid('group:100', 11).text, '.r 1d100', 'entry 是脱敏副本,改不动存档');
+  eq(incoming.length, 0, '认领 → 不排唤醒(onIncoming 未被调用)');
+  eq(storeI.unread('group:100').length, 0, '认领 → 宿主标已读沉历史');
+}
+
+section('唤醒前拦截：不认领/提供者异常 → 放行,原判定照旧');
+{
+  const dirI2 = mktmp('qqa-orch-intercept2-');
+  const storeI2 = createChatStore({ dataDir: dirI2, log: {} });
+  const registryI2 = createCapabilityRegistry({ log: {} });
+  let calls = 0;
+  registryI2.register('ingest.intercept', 'fickle-plugin', () => { calls++; return null; }); // 不认领
+  const incoming2 = [];
+  const fakeIngest2 = { ingestMessage: async () => ({ accepted: true, chatKey: 'group:100', entry: storeI2.appendIncoming('group:100', { mid: 12, ts: Date.now(), senderId: '555', senderName: 'A', text: '普通消息' }) }) };
+  await handleProviderEvent({ kind: 'group', id: '100', type: 'message', event: {} }, {
+    ingest: fakeIngest2, orchestrator: { onIncoming: async (k, e) => { incoming2.push([k, e]); }, isPaused: () => false },
+    cfg: () => ({ commandMute: { enabled: false } }), config: { update() {} }, store: storeI2, bus: null,
+    log: { info() {}, warn() {}, error() {} }, capability: registryI2, selfIdOf: () => '999', forwardMedia: async () => ({}), signal: null, current: () => true,
+  });
+  eq(calls, 1, '不认领仍被咨询');
+  eq(incoming2.length, 1, '不认领 → 原路径 onIncoming');
+
+  const registryI3 = createCapabilityRegistry({ log: {} });
+  registryI3.register('ingest.intercept', 'broken-plugin', () => { throw new Error('插件炸了'); });
+  const incoming3 = [];
+  const fakeIngest3 = { ingestMessage: async () => ({ accepted: true, chatKey: 'group:100', entry: storeI2.appendIncoming('group:100', { mid: 13, ts: Date.now(), senderId: '555', senderName: 'A', text: '第二条' }) }) };
+  await handleProviderEvent({ kind: 'group', id: '100', type: 'message', event: {} }, {
+    ingest: fakeIngest3, orchestrator: { onIncoming: async (k, e) => { incoming3.push([k, e]); }, isPaused: () => false },
+    cfg: () => ({ commandMute: { enabled: false } }), config: { update() {} }, store: storeI2, bus: null,
+    log: { info() {}, warn(v) {}, error() {} }, capability: registryI3, selfIdOf: () => '999', forwardMedia: async () => ({}), signal: null, current: () => true,
+  });
+  eq(incoming3.length, 1, '提供者异常 → 记日志后放行,不连累正常对话');
+}
+
+section('唤醒前拦截：全局暂停 → 不调用拦截(暂停优先);提供者停用 → 活性失效不咨询');
+{
+  const dirI4 = mktmp('qqa-orch-intercept3-');
+  const storeI4 = createChatStore({ dataDir: dirI4, log: {} });
+  const registryI4 = createCapabilityRegistry({ log: {} });
+  let consulted = 0;
+  registryI4.register('ingest.intercept', 'dice-plugin', () => { consulted++; return { handled: true }; });
+  const incoming4 = [];
+  const fakeIngest4 = { ingestMessage: async () => ({ accepted: true, chatKey: 'group:100', entry: storeI4.appendIncoming('group:100', { mid: 14, ts: Date.now(), senderId: '555', senderName: 'A', text: '.r 1d100' }) }) };
+  await handleProviderEvent({ kind: 'group', id: '100', type: 'message', event: {} }, {
+    ingest: fakeIngest4, orchestrator: { onIncoming: async (k, e) => { incoming4.push([k, e]); }, isPaused: () => true },
+    cfg: () => ({ commandMute: { enabled: false } }), config: { update() {} }, store: storeI4, bus: null,
+    log: { info() {}, warn() {}, error() {} }, capability: registryI4, selfIdOf: () => '999', forwardMedia: async () => ({}), signal: null, current: () => true,
+  });
+  eq(consulted, 0, '暂停 → 不调用拦截');
+  eq(incoming4.length, 1, '暂停 → 消息照常积压给 onIncoming(其内部再判暂停)');
+
+  // 停用/换代:owner 不再 active → providers() 过滤掉,相当于租约失效。
+  const registryI5 = createCapabilityRegistry({ log: {} });
+  registryI5._setActiveProbe((ownerId) => ownerId !== 'dead-plugin');
+  let consultedDead = 0;
+  registryI5.register('ingest.intercept', 'dead-plugin', () => { consultedDead++; return { handled: true }; });
+  const incoming5 = [];
+  const fakeIngest5 = { ingestMessage: async () => ({ accepted: true, chatKey: 'group:100', entry: storeI4.appendIncoming('group:100', { mid: 15, ts: Date.now(), senderId: '555', senderName: 'A', text: '.r 2d20' }) }) };
+  await handleProviderEvent({ kind: 'group', id: '100', type: 'message', event: {} }, {
+    ingest: fakeIngest5, orchestrator: { onIncoming: async (k, e) => { incoming5.push([k, e]); }, isPaused: () => false },
+    cfg: () => ({ commandMute: { enabled: false } }), config: { update() {} }, store: storeI4, bus: null,
+    log: { info() {}, warn() {}, error() {} }, capability: registryI5, selfIdOf: () => '999', forwardMedia: async () => ({}), signal: null, current: () => true,
+  });
+  eq(consultedDead, 0, '提供者停用/换代 → 不咨询旧提供者(租约失效)');
+  eq(incoming5.length, 1, '停用后放行走原路径');
+}
 
 summary('18-orchestrator');

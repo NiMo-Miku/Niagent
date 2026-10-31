@@ -291,6 +291,8 @@ const send = ctx.capability('core.send');
 const receipt = await send.sendTextBatch(execution.chatKey, '完成', { signal: execution.signal });
 ```
 
+**宿主消费的提供者能力（注册即生效，无独立 scope，但要有真实行为）**：`ctx.registerCapability('ingest.intercept', handler)` —— 宿主在每条消息入库后、唤醒判定前咨询（2026-10-31 新增）。handler 收到 `{chatKey, entry, markRead(), signal}`（entry 为存档条目的脱敏副本），返回真值=认领：宿主不再排唤醒/建会话，你自行经 ctx.send 发送并保证已读语义（宿主认领后也会保底标已读）；返回 falsy=放行。**必须快速返回**（整体 10 秒超时后按不认领放行）；抛错等同不认领（记日志）。全局暂停时不被调用；插件停用/热重载后旧提供者自动失效。多提供者按注册序第一个认领者获胜；拍一拍不走该拦截。官方用例见 trpg-dice（`.r 1d100` 零 token 直发）。
+
 函数能力用 `ctx.capability(name,...args)`；对象能力先获取对象再 await 方法。普通宿主 facade 可能存在但方法目标尚未就绪，调用会明确抛错；hasCapability 为真也不保证配置齐全、权限已批或网络可达。缺失的自定义能力可得到 undefined，写软依赖必须给回退；硬依赖使用 manifest.requires/工具 requires。单提供者优先活跃非 default，管理员可指定 owner；同优先级保持注册顺序。多提供者的 `llm.request-params/llm.response/llm.usage/llm.retry-advisor/tool.guard/media.download` 由宿主按各自链式/认领合同消费，普通 ctx.capability 不等于“调用全部”。
 
 常用宿主方法如下，普通扩展一律 await。返回对象为脱敏副本；未列方法不可访问。

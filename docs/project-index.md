@@ -243,6 +243,8 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 
 **运行时插件 SDK ctx**(`plugin-loader.js` makeCtx):`registerTool` / `registerCapability` / `registerTransport` / `prompt.add` / `hooks.on`(before-context、before-llm-messages、after-response、before-tool、after-tool)/ `scheduler.every|at` / `send` / `http.fetch`(safe-fetch 闸)/ `storage` / `events.on|emit`(仅 blocklist-sync 可 emit)/ `ui.panel.register` / `permissions.status|request` / `config.get|all|onChange`(仅自己 configSchema 声明过的键)。
 
+**唤醒前拦截**(2026-10-31 任务二,实现在 `bundled/runtime-defaults/business.js`):插件 `ctx.registerCapability('ingest.intercept', handler)` → 宿主在入库后、`onIncoming` 前咨询,载荷 `{chatKey, entry(脱敏副本), markRead(), signal}`;认领=已读沉历史+不排唤醒不建会话(零 token),不认领/异常/10s 超时=放行,暂停不调用,停用/换代自然失效。官方消费者 trpg-dice(3.1.0,档位 1 直发,`.r 1d100` 零模型)。测试 test/18(五条合同)+test/311(档位 1 端到端)。
+
 **插件人格能力**(2026-10-31 本体开发任务一,组件 `core.persona.write`,实现在 `src/kernel/persona-write.js`):`ctx.capability('persona.write')` → `write({chatKey|null,fields})`(白名单 roleText/customRules/systemPromptOverride,空串=清除,越权 403/超长 400)+ `select({chatKey|null,personaId})`(按人设库切换,语义同控制台「选择」);`ctx.capability('persona.read')` → `read()` 摘要 + `resolve(chatKey)` 生效合成。scope `persona.write`(用户默认 ask/headless=deny)与 `persona.read`(默认 allow);审计日志不含正文;会话级覆盖生效仍受 personaUnified 门约束(返回值如实标注)。测试 `test/310-persona-write-test.mjs`。
 
 **面板侧(用户插件 ui/ 页面)**:`ctx.call`(自身工具)/ `ctx.getConfig` / **`ctx.setConfig`(schema 校验+密钥 hasXxx 保留/清除)** / `ctx.notify`。

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildToolAvailabilityContext } from '../../src/kernel/tools.js';
+import { sanitizeSdkValue } from '../../src/kernel/sdk-services.js';
 
 export function readPersonaText({ appRoot }) {
   try { return fs.readFileSync(path.join(appRoot, 'assets', 'personas', 'xiaojingyu.txt'), 'utf8').trimEnd(); }
@@ -48,6 +49,39 @@ export async function forwardLinkedMedia(chatKey, entry, { runtimeState, capabil
   return { claimed: true, sent: true, ownerId: result.ownerId, sentCount: sent?.sent?.length ?? 0 };
 }
 
+// 唤醒判定之前的最后一段插件拦截点（本体开发移交引索.md 任务二，2026-10-31）：
+// `ingest.intercept` 提供者在消息入库后、onIncoming 前被咨询。合同：
+// 认领（返回真值）→ 宿主标已读沉历史、不排唤醒不建会话；不认领/提供者异常/整体超时
+// → 按不认领放行，三档判定照旧（绝不能连累正常对话）；全局暂停时不调用（暂停优先）。
+// 提供者换代/停用由 capability.registry 的活性探针与注册版本自然失效，热重载不双重拦截。
+const INTERCEPT_TIMEOUT_MS = 10_000;
+
+async function interceptIncoming({ capability, chatKey, entry, store, bus, log, signal, paused }) {
+  if (paused || !capability || typeof capability.claimAsync !== 'function') return false;
+  if ((capability.providers?.('ingest.intercept') ?? []).length === 0) return false;
+  const markRead = () => {
+    try { store.markEntryRead(chatKey, entry.id); bus?.emit?.('chat.update', chatKey); } catch { /* 已读尽力而为，幂等 */ }
+  };
+  let timer = null;
+  let outcome = null;
+  try {
+    outcome = await Promise.race([
+      capability.claimAsync('ingest.intercept', { chatKey, entry: sanitizeSdkValue(entry), markRead, signal }),
+      new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), INTERCEPT_TIMEOUT_MS); }),
+    ]);
+  } catch (error) {
+    log?.warn?.(`[ingest.intercept] 调度异常，按不认领放行：${error?.message ?? error}`);
+    return false;
+  } finally { if (timer) clearTimeout(timer); }
+  if (outcome === 'timeout') {
+    log?.warn?.(`[ingest.intercept] 提供者 ${INTERCEPT_TIMEOUT_MS / 1000} 秒未响应，按不认领放行（${chatKey}）`);
+    return false;
+  }
+  if (!outcome) return false;
+  markRead(); // 认领即由宿主标已读：消息进存档作历史，不进唤醒上下文（幂等，插件提前调用无害）
+  return true;
+}
+
 export async function handleProviderEvent({ kind, id, type, event }, { ingest, orchestrator, cfg, config, store, bus, log, capability, selfIdOf, forwardMedia, signal, current = () => true }) {
   const active = () => !signal?.aborted && current();
   if (!active()) return;
@@ -62,6 +96,9 @@ export async function handleProviderEvent({ kind, id, type, event }, { ingest, o
         config.update({ commandMute: { active: { __replace__: { ...(c.commandMute?.active ?? {}), [String(id)]: until } } } });
         log.info?.(`[kernel] 群 ${id} 触发指令禁言（${command}），${duration > 0 ? duration + ' 分钟后解除' : '直到手动解除'}`);
       }
+      // 唤醒判定之前的插件拦截点（任务二）：认领 → 已读沉历史，不排唤醒不建会话，
+      // 也不再做链接媒体转发（该消息的出站处理权归认领插件）。
+      if (await interceptIncoming({ capability, chatKey: result.chatKey, entry: result.entry, store, bus, log, signal, paused: orchestrator.isPaused?.() === true })) return;
       await orchestrator.onIncoming(result.chatKey, result.entry);
       void Promise.resolve().then(() => active() && forwardMedia(result.chatKey, result.entry, { signal, current })).catch((error) => {
         if (active()) log.warn?.(`[media] 链接媒体转发失败：${error?.message ?? error}`);
