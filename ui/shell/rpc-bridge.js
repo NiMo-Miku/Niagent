@@ -6,11 +6,10 @@ import {currentAccountScope,normalizeAccountId} from '../panels/account-scope.js
 import {accountNavigationUrl} from './account-navigation.js';
 
 const RPC={INVALID:-32600,NOT_FOUND:-32601,FORBIDDEN:-32003,INTERNAL:-32603};
-const RPC_METHODS=new Set(['settings.saveState','settings.save','api.request','ctx.call','ctx.getConfig','ctx.notify','ui.confirm','ui.notify','ui.openExternal','ui.destructiveProgress','console.manageToken','console.update','ui.captchaDiagnostics','community.authenticateMarket','community.cancelMarketAuthentication','community.publishMarket','community.cancelMarketPublish','community.publishQuote','community.cancelQuotePublish','community.publishFeedback','community.cancelFeedbackPublish','theme.apply','appearance.open','appearance.select','panel.ready','panel.contentReady','panel.flushed']);
+const RPC_METHODS=new Set(['settings.saveState','settings.save','api.request','ctx.call','ctx.getConfig','ctx.notify','ui.confirm','ui.notify','ui.openExternal','ui.destructiveProgress','console.manageToken','console.update','community.publishQuote','community.cancelQuotePublish','theme.apply','appearance.open','appearance.select','panel.ready','panel.contentReady','panel.flushed']);
 const PROTOCOL_LOGIN_POSTS=new Set(['connect','refresh','inject','close','visibility'].map(action=>'/api/local-protocols/login/'+action));
 const validProtocolSession=value=>typeof value==='string'&&value.length>0&&value.length<=256;
 const EXTERNAL_TARGETS_BY_PANEL=new Map([
-  ['community',new Set(['persona-plaza-btn','feedback-btn','plugin-market-btn','open-site-btn'])],
   ['skills',new Set(['skill-market-btn'])],
   ['plugins',new Set(['plugin-market-btn'])],
   ['settings',new Set([...Object.keys(LOCAL_PROTOCOL_RELEASES),'local-protocol-login','protocol-login-native'])],
@@ -22,12 +21,9 @@ function routePattern(path) {
 
 /** Opaque-origin iframes require targetOrigin="*"; source + panel id + one-time nonce authenticate every message. */
 export class RpcBridge {
-  constructor({frame,api,controlApi=api,manifest,timeout=15000,onUserCall=async()=>{throw new Error('当前运行环境未提供该能力');},onUserConfig=async()=>({}),onNotify=()=>{},onReady=null,onTheme=null,onOpenExternal=null,onPublishQuote=null,onPublishFeedback=null,onManageConsoleToken=null,onUpdateAction=null,onPublishMarket=null,onAuthenticateMarket=null,onCaptchaDiagnostics=null,onDestructiveProgress=null,viewState=null,onAccountStopped=id=>{if(id===currentAccountScope.id&&id!=='primary')window.location.assign(accountNavigationUrl('primary',manifest?.id));}}={}) {
+  constructor({frame,api,controlApi=api,manifest,timeout=15000,onUserCall=async()=>{throw new Error('当前运行环境未提供该能力');},onUserConfig=async()=>({}),onNotify=()=>{},onReady=null,onTheme=null,onOpenExternal=null,onPublishQuote=null,onManageConsoleToken=null,onUpdateAction=null,onDestructiveProgress=null,viewState=null,onAccountStopped=id=>{if(id===currentAccountScope.id&&id!=='primary')window.location.assign(accountNavigationUrl('primary',manifest?.id));}}={}) {
     this.frame=frame; this.api=api; this.controlApi=controlApi;this.onAccountStopped=onAccountStopped;this.manifest=manifest??{}; this.timeout=timeout; this.onUserCall=onUserCall; this.onUserConfig=onUserConfig; this.onNotify=onNotify; this.onReady=onReady; this.onTheme=onTheme; this.onOpenExternal=onOpenExternal;this.onPublishQuote=onPublishQuote;this.quoteController=null;
-    this.onPublishFeedback=onPublishFeedback;this.feedbackController=null;
     this.onManageConsoleToken=onManageConsoleToken;this.onUpdateAction=onUpdateAction;
-    this.onPublishMarket=onPublishMarket;this.marketController=null;this.onCaptchaDiagnostics=onCaptchaDiagnostics;
-    this.onAuthenticateMarket=onAuthenticateMarket;this.authenticationController=null;
     this.onDestructiveProgress=onDestructiveProgress;this.destructiveProgressActive=false;this.leaving=false;
     this.protocolLoginSession=null;this.protocolLoginReleased=new Set();
     this.backgroundUploads=new Set();
@@ -62,32 +58,6 @@ export class RpcBridge {
       this.destructiveProgressActive=params.progress>0||params.phase==='complete';this.onDestructiveProgress?.(params.progress,params.phase);
       if(Object.hasOwn(message,'id'))this.reply(message.id,{ok:true});return;
     }
-    if(['community.authenticateMarket','community.cancelMarketAuthentication'].includes(message.method)){
-      if(this.manifest.kind!=='bundled'||this.manifest.id!=='community'||!this.allowed('POST','/api/market/login'))return this.fail(message.id,RPC.FORBIDDEN,'此面板不能管理社区登录');
-      if(message.method==='community.cancelMarketAuthentication'){this.authenticationController?.abort(new Error('已取消登录等待；若认证请求已发出，请刷新账号状态'));return this.reply(message.id,{ok:true});}
-      if(this.authenticationController)return this.fail(message.id,RPC.INTERNAL,'社区认证正在进行，请勿重复操作',409);
-      const controller=new AbortController();this.authenticationController=controller;this.controllers.add(controller);
-      try{if(typeof this.onAuthenticateMarket!=='function')throw new Error('当前环境未提供社区人机验证与登录能力');this.reply(message.id,await this.onAuthenticateMarket(message.params,{signal:controller.signal}));}
-      catch(error){this.fail(message.id,RPC.INTERNAL,error.message,error.status);}
-      finally{this.controllers.delete(controller);if(this.authenticationController===controller)this.authenticationController=null;}
-      return;
-    }
-    if(message.method==='ui.captchaDiagnostics'){
-      if(this.manifest.kind!=='bundled'||this.manifest.id!=='community')return this.fail(message.id,RPC.FORBIDDEN,'此面板不能打开验证码诊断');
-      if(message.params!==undefined&&(!message.params||typeof message.params!=='object'||Array.isArray(message.params)||Object.keys(message.params).length))return this.fail(message.id,RPC.INVALID,'诊断仅检测固定网络目标');
-      try{if(typeof this.onCaptchaDiagnostics!=='function')throw new Error('验证码诊断尚未就绪');this.onCaptchaDiagnostics();return this.reply(message.id,{ok:true});}
-      catch(error){return this.fail(message.id,RPC.INTERNAL,error.message);}
-    }
-    if(['community.publishMarket','community.cancelMarketPublish'].includes(message.method)){
-      if(this.manifest.kind!=='bundled'||this.manifest.id!=='community'||!this.allowed('POST','/api/market/publish'))return this.fail(message.id,RPC.FORBIDDEN,'此面板不能发布扩展');
-      if(message.method==='community.cancelMarketPublish'){this.marketController?.abort(new Error('已取消发布等待；若已开始上传，请到市场确认结果'));return this.reply(message.id,{ok:true});}
-      if(this.marketController)return this.fail(message.id,RPC.INTERNAL,'扩展正在发布，请勿重复操作',409);
-      const controller=new AbortController();this.marketController=controller;this.controllers.add(controller);
-      try{if(typeof this.onPublishMarket!=='function')throw new Error('当前环境未提供人机验证与扩展发布能力');this.reply(message.id,await this.onPublishMarket(message.params,{signal:controller.signal}));}
-      catch(error){this.fail(message.id,RPC.INTERNAL,error.message,error.status);}
-      finally{this.controllers.delete(controller);if(this.marketController===controller)this.marketController=null;}
-      return;
-    }
     if(message.method==='console.manageToken'){
       if(this.manifest.kind!=='bundled'||this.manifest.id!=='settings')return this.fail(message.id,RPC.FORBIDDEN,'此面板不能管理控制台令牌');
       if(message.params!==undefined&&(!message.params||typeof message.params!=='object'||Array.isArray(message.params)||Object.keys(message.params).length))return this.fail(message.id,RPC.INVALID,'令牌管理请求不能携带凭据');
@@ -104,18 +74,6 @@ export class RpcBridge {
         if(typeof this.onUpdateAction!=='function')throw new Error('版本检查尚未就绪');
         return this.reply(message.id,await this.onUpdateAction(params));
       }catch(error){return this.fail(message.id,RPC.INTERNAL,error.message);}
-    }
-    if(['community.publishFeedback','community.cancelFeedbackPublish'].includes(message.method)){
-      if(this.manifest.kind!=='bundled'||this.manifest.id!=='community'||!this.allowed('POST','/api/community/feedback'))return this.fail(message.id,RPC.FORBIDDEN,'此面板不能提交意见');
-      if(message.method==='community.cancelFeedbackPublish'){this.feedbackController?.abort(new Error('已取消投稿'));return this.reply(message.id,{ok:true});}
-      if(this.feedbackController)return this.fail(message.id,RPC.INTERNAL,'意见正在提交，请勿重复操作',409);
-      const controller=new AbortController();this.feedbackController=controller;this.controllers.add(controller);
-      try{
-        if(typeof this.onPublishFeedback!=='function')throw new Error('当前环境未提供人机验证与意见提交能力');
-        this.reply(message.id,await this.onPublishFeedback(message.params,{signal:controller.signal}));
-      }catch(error){this.fail(message.id,RPC.INTERNAL,error.message,error.status);}
-      finally{this.controllers.delete(controller);if(this.feedbackController===controller)this.feedbackController=null;}
-      return;
     }
     if(['community.publishQuote','community.cancelQuotePublish'].includes(message.method)){
       if(this.manifest.kind!=='bundled'||this.manifest.id!=='chats'||!this.allowed('POST','/api/community/quotes'))return this.fail(message.id,RPC.FORBIDDEN,'此面板不能发布金句');

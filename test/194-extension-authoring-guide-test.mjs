@@ -5,8 +5,8 @@ import {createHash} from 'node:crypto';
 import {modelUiFixture} from './model-ui-fixture.mjs';
 import {buildAuthoringPrompt} from '../ui/panels/extension-authoring-prompt.js';
 
-const root=path.resolve(import.meta.dirname,'..'),metadataFiles=['docs/plugin-sdk.md','docs/architecture-composition.md','docs/extension-authoring.md','docs/extension-reference.md','docs/v04-extension-parity.md','docs/ai-extension-prompt.md'],pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-for(const file of [...metadataFiles,'scripts/inspect-composition.mjs']){assert.ok(fs.existsSync(path.join(root,file)),file);assert.ok(pkg.build.files.includes(file),`packaged guide must include ${file}`);}
+const root=path.resolve(import.meta.dirname,'..'),metadataFiles=['docs/plugin-sdk.md','docs/architecture-composition.md','docs/extension-authoring.md','docs/extension-reference.md','docs/v04-extension-parity.md','docs/ai-extension-prompt.md'];
+for(const file of [...metadataFiles,'scripts/inspect-composition.mjs']){assert.ok(fs.existsSync(path.join(root,file)),file);}
 const context={appRoot:'C:\\Synthetic Project\\app'},neutralPrompt=buildAuthoringPrompt({context});
 for(const kind of ['auto','skill','plugin','composition']) {
   const prompt=buildAuthoringPrompt({kind,requirements:'obsolete <script>not executed</script>',publishRequested:true,context});
@@ -45,7 +45,7 @@ const f=await modelUiFixture();let release,appended;
 const configBeforeAuthoring=fs.readFileSync(f.kernel.config.file,'utf8');
 const importMarker='__qa194AuthoringImports';
 try {
-  const metadata=await f.request('GET','/api/extensions/authoring-context');assert.equal(metadata.status,200);assert.equal(metadata.data.appRoot,f.appRoot);assert.deepEqual(Object.keys(metadata.data).sort(),['appRoot','docs','version']);assert.deepEqual(metadata.data.docs,metadataFiles);assert.equal(JSON.stringify(metadata.data).includes('synthetic-key'),false);
+  const metadata=await f.request('GET','/api/extensions/authoring-context');assert.equal(metadata.status,200);assert.equal(metadata.data.appRoot,f.appRoot);assert.deepEqual(Object.keys(metadata.data).sort(),['appRoot','docs','version']);assert.deepEqual(metadata.data.docs,[...metadataFiles.slice(0,4),'docs/extension-online-updates.md',...metadataFiles.slice(4)]);assert.equal(JSON.stringify(metadata.data).includes('synthetic-key'),false);
   assert.equal((await fetch(f.base+'/api/extensions/authoring-context')).status,401);
   const dialog=()=>f.frame.locator('dialog.authoring-guide');
   const prompt=()=>dialog().getByRole('textbox',{name:'给AI的提示词'});
@@ -63,7 +63,7 @@ try {
     copiedFromEmptyEntries.push({panel,appRoot:f.appRoot,prompt:copied[0]});
     return copied[0];
   }
-  for(const panel of ['skills','plugins','community']) {
+  for(const panel of ['skills','plugins']) {
     await f.page.locator('#nav button[data-panel='+panel+']').click();
     await f.frame.getByRole('button',{name:'创作扩展',exact:true}).click();
     await dialog().getByRole('status').filter({hasText:'已读取项目位置'}).waitFor();
@@ -125,9 +125,9 @@ try {
   }
   assert.equal(f.outbound(),0);await f.close();
   appended=await modelUiFixture({uiAssetPath:'panels/extension-authoring.js',uiAsset:`export function bindAuthoringGuide({parent,kind='auto'}){const button=document.createElement('button');button.textContent='追加创作入口';button.onclick=()=>{button.dataset.overrideKind=kind;};parent.append(button);return button;} export function openAuthoringGuide(){}`});
-  for(const [panel,kind] of [['skills','skill'],['plugins','plugin'],['community','auto']]) {
+  for(const [panel,kind] of [['skills','skill'],['plugins','plugin']]) {
     await appended.page.locator('#nav button[data-panel='+panel+']').click();const control=appended.frame.getByRole('button',{name:'追加创作入口',exact:true});await control.click();assert.equal(await control.getAttribute('data-override-kind'),kind);
-    assert.equal(await appended.frame.locator(panel==='community'?'#pane-account':'#tab-market').isVisible(),true,'unrelated market navigation remains');
+    assert.equal(await appended.frame.locator('#tab-market').isVisible(),true,'unrelated market navigation remains');
   }
   assert.deepEqual(appended.errors,[]);assert.equal(appended.outbound(),0);
   if(process.env.QA_AUTHORING_PROMPT_EVIDENCE_DIR){

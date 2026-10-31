@@ -133,7 +133,9 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 | `update-notice.js` | 每小时查 `/api/update-check`,只给下载链接 |
 | 其余 | panel-recovery、panel-view-state(RAM 租约恢复面板状态)、refresh-queue、destructive-feedback、startup-navigation 等 |
 
-### 6.2 ui/panels/(10 个内置面板)
+### 6.2 ui/panels/(9 个内置面板)
+
+> 2026-10-31:移除原第 10 个面板「我的」(community:发布账号/扩展发布/意见反馈/验证码诊断);技能市场与插件市场保留。chats 面板的金句投稿与后端 market/community 插件不受影响。
 
 | 面板 | 规模 | 功能 |
 |---|---|---|
@@ -142,12 +144,11 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 | `sessions` | panel.js + trace-view 等 9 文件 | 会话流水:列表/详情/流式步骤/等待倒计时/重试/中止 |
 | `chats` | panel.js + message-view/quote-mode/history | 存档浏览:媒体查看、合并转发展开、多选删除、金句投稿模式 |
 | `skills` / `plugins` | 共用 extension-manager.js(30KB) | 市场浏览/ZIP 安装/启停/热重载/权限对话框;两入口 panel.js 为复制粘贴对 |
-| `community` | panel.js + feedback-form | 发布账号管理、扩展发布、意见反馈(阿里验证码) |
 | `memory` | panel.js 231 行 | 记忆浏览/成员印象/备注/合并 |
 | `usage` | panel.js + spark.js | 用量 sparkline、细分、成本表 |
 | `logs` | panel.js + log-stream | 最近 200 条+流式合并(最简面板) |
 
-根级共享模块:`panel-client.js`(面板侧 RPC)、`ui.js`(DOM 工具+自动错误框)、`icons.js`、`extension-manager.js`、`market-browser.js`、`destructive-action.js`(长按确认)、`motion.js`(GSAP 封装+reduced-motion)、`selection-state.js`、`dialog-lifecycle.js`、`live-refresh.js` 等。`manifest.json` 注册 10 面板 + 1 个测试夹具面板。
+根级共享模块:`panel-client.js`(面板侧 RPC)、`ui.js`(DOM 工具+自动错误框)、`icons.js`、`extension-manager.js`、`market-browser.js`、`destructive-action.js`(长按确认)、`motion.js`(GSAP 封装+reduced-motion)、`selection-state.js`、`dialog-lifecycle.js`、`live-refresh.js` 等。`manifest.json` 注册 9 面板 + 1 个测试夹具面板。
 
 ### 6.3 vendor 与 assets
 

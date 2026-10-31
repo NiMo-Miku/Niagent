@@ -813,56 +813,6 @@
           "path": "/api/ui/fonts/refresh"
         }
       ]
-    },
-    {
-      "id": "community",
-      "title": "我的",
-      "description": "发布账号、扩展发布、意见收集与验证码诊断",
-      "icon": "profile",
-      "api": [
-        {
-          "method": "GET",
-          "path": "/api/community/feedback/status"
-        },
-        {
-          "method": "POST",
-          "path": "/api/community/feedback"
-        },
-        {
-          "method": "GET",
-          "path": "/api/community/feedback-draft"
-        },
-        {
-          "method": "PUT",
-          "path": "/api/community/feedback-draft"
-        },
-        {
-          "method": "DELETE",
-          "path": "/api/community/feedback-draft"
-        },
-        {
-          "method": "GET",
-          "path": "/api/market/accounts"
-        },
-        {
-          "method": "POST",
-          "path": "/api/market/login"
-        },
-        {
-          "method": "POST",
-          "path": "/api/market/logout"
-        },
-        {
-          "method": "POST",
-          "path": "/api/market/publish"
-        },
-        {
-          "method": "GET",
-          "path": "/api/extensions/authoring-context"
-        }
-      ],
-      "kind": "bundled",
-      "permissions": []
     }
   ],
   "fixtures": [

@@ -43,7 +43,7 @@ try{
   }
   // Every default panel stays mounted and retains its reading blocks under both
   // repeated authenticated status notifications and the normal recovery cycle.
-  for(const id of ['sessions','chats','memory','usage','skills','plugins','logs','settings','community']){
+  for(const id of ['sessions','chats','memory','usage','skills','plugins','logs','settings']){
     await f.page.locator(`#nav button[data-panel=${id}]`).click();await f.frame.locator(`body[data-panel=${id}]`).waitFor();await pause(650);
     await f.frame.locator('body').evaluate(n=>{window.__panelRoot258=n;window.__blocks258=[...n.querySelectorAll('.card,.list-item,.metric,.usage-table,.settings-section,.capability-provider-row,main > .head')];window.__replayed258=[];window.__observe258=new MutationObserver(()=>{for(const a of document.getAnimations()){if(a.playState==='running'&&a.effect.getKeyframes().some(frame=>frame.opacity==='0'||frame.opacity===0)&&!window.__replayed258.includes(a))window.__replayed258.push(a);}});window.__observe258.observe(n,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class']});});
     for(let i=0;i<3;i++){f.kernel.bus.emit('status',{fixture258:i});await pause(200);}await pause(1000);

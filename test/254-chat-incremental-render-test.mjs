@@ -126,7 +126,7 @@ try{
     assert.deepEqual(f.errors,[]);assert.equal(f.outbound(),0);assert.equal(f.writes.some(w=>/delete|clear|test-send|quotes/.test(w.path)),false);
     verification={passed:true,headed:process.env.QA_HEADED==='1',events,selectionPolish:{entrance,controls,glow},sseLatencyMs:elapsed,quietContentWrites:quiet.writes,externalRequests:f.outbound(),liveConsoleAccessed:false};
     if(evidence)await f.page.screenshot({path:path.join(evidence,'archive-incremental.png'),fullPage:true});
-    const headings=[];for(const id of ['sessions','chats','memory','usage','skills','plugins','logs','settings','community']){
+    const headings=[];for(const id of ['sessions','chats','memory','usage','skills','plugins','logs','settings']){
       await f.page.locator(`#nav button[data-panel="${id}"]`).click();await f.frame.locator(`body[data-panel="${id}"] main > .head`).waitFor();
       const style=await f.frame.locator('main > .head').evaluate(n=>{const css=getComputedStyle(n),main=getComputedStyle(n.parentElement);return{minHeight:css.minHeight,paddingBottom:css.paddingBottom,marginBottom:css.marginBottom,paddingTop:main.paddingTop};});assert.deepEqual(style,{minHeight:'44px',paddingBottom:'10px',marginBottom:'14px',paddingTop:'10.4px'},id);headings.push(id);
     }

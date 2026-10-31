@@ -7,9 +7,6 @@ import {StateStore} from './state-store.js';
 import {createConsoleAuth} from './console-auth.js';
 import {verifyPublicCaptcha} from './public-captcha.js';
 import {createTokenManagement} from './token-management.js';
-import {createCaptchaDiagnostics} from './captcha-diagnostics.js';
-import {publishMarketFromHost} from './market-publication.js';
-import {authenticateMarketFromHost} from './market-authentication.js';
 import {publishQuoteFromHost} from './quote-publication.js';
 // ui.uikit 是结构化的（mode + light/dark/custom），要先解析出当前生效方案再应用
 import {resolveScheme} from '../panels/theme.js';
@@ -89,7 +86,6 @@ api.recoverAuth=async({token:failedToken})=>{
 };
 controlApi.recoverAuth=api.recoverAuth;
 let tokenManagement=null;
-const captchaDiagnostics=createCaptchaDiagnostics();
 const host=document.querySelector('#panel-host'),nav=document.querySelector('#nav'),indicator=document.querySelector('#sse'),dot=document.querySelector('#status-dot');
 const toastRegion=document.querySelector('#toast-region'),dialog=document.querySelector('#confirm-dialog'),confirmTitle=document.querySelector('#confirm-title'),confirmText=document.querySelector('#confirm-text'),permissionHost=document.querySelector('#permission-asks');
 const pauseButton=document.querySelector('#pause-btn'),runtimeLabel=document.querySelector('#runtime-state'),cacheHitLabel=document.querySelector('#cache-hit-rate');
@@ -211,19 +207,9 @@ const registry=new PanelRegistry({
   frameHost:host,api,controlApi,onNotify:text=>toast(text),
   onUpdateAction:params=>{if(!updateNotice)throw new Error('版本检查尚未就绪');return updateNotice.action(params);},
   onManageConsoleToken:()=>{if(!tokenManagement)throw new Error('控制台尚未就绪');return tokenManagement.open();},
-  onCaptchaDiagnostics:()=>captchaDiagnostics.open(),
-  onPublishMarket:(payload,options)=>publishMarketFromHost(api,payload,options),
-  onAuthenticateMarket:(payload,options)=>authenticateMarketFromHost(api,payload,options),
   onUserCall:(tool,args,panel,generation)=>api.post(`/api/panels/${encodeURIComponent(panel)}/call`,{tool,args,generation}),
   onUserConfig:(key,panel,generation)=>api.post(`/api/panels/${encodeURIComponent(panel)}/config`,{key,generation}),
   onPublishQuote:(payload,options)=>publishQuoteFromHost(api,payload,options),
-  onPublishFeedback:async(payload,{signal})=>{
-    const ready=await api.get('/api/community/feedback/status');
-    if(ready?.available!==true)throw new Error(ready?.reason||'意见提交服务未就绪，请稍后重试');
-    const captchaVerifyParam=await verifyPublicCaptcha({signal});
-    if(signal.aborted)throw signal.reason;
-    return api.request('POST','/api/community/feedback',{nickname:payload?.nickname,text:payload?.text,images:payload?.images,captchaVerifyParam},undefined,{signal});
-  },
   onOpenExternal:(target,context)=>{
     const url=['local-protocol-login','protocol-login-native'].includes(target)?localProtocolLoginUrl(context?.protocolUrl):LOCAL_PROTOCOL_RELEASES[target]||externalLinks[target];
     if(!url)throw new Error('不支持的社区网页');

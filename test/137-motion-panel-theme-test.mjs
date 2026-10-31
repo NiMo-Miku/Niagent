@@ -95,7 +95,7 @@ assert.equal(animateMount(null), null);
 }
 console.log('✓ 137 bounded first paint, idempotent install and complete teardown');
 
-for(const panel of ['sessions','chats','memory','usage','skills','plugins','logs','settings','community']){
+for(const panel of ['sessions','chats','memory','usage','skills','plugins','logs','settings']){
   const env=fixture();env.doc.body={dataset:{panel}};const first=new env.Node();env.doc.initial=[first];const dispose=installMotion(env.doc);
   assert.equal(first.animations.length,1,'page entry still animates');
   const detail=new env.Node({id:'detail'}),card=new env.Node({className:'list-item',parent:detail});

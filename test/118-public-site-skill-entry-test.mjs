@@ -24,18 +24,15 @@ try {
   }
   guard.manifest.kind = 'user';await guard.handle(event('skill-market-btn'));
   assert.equal(sent.at(-1).error.code, -32003);
-  guard.manifest = { id: 'community', kind: 'bundled', api: [] };
-  await guard.handle(event('open-site-btn'));assert.deepEqual(opened, ['skill-market-btn', 'open-site-btn']);
-  await guard.handle(event('skill-market-btn'));assert.equal(sent.at(-1).error.code, -32600);
   for (const id of ['settings', '__proto__', 'constructor']) {
-    guard.manifest.id = id;await guard.handle(event('open-site-btn'));assert.equal(sent.at(-1).error.code, -32003);
+    guard.manifest.id = id;await guard.handle(event('skill-market-btn'));assert.equal(sent.at(-1).error.code, -32003);
   }
   guard.manifest = { id: 'skills', kind: 'bundled', api: [] };
   for (const patch of [e => { e.source = {}; }, e => { e.origin = 'https://evil.invalid'; }, e => { e.data.meta.nonce = 'wrong'; }, e => { e.data.meta.panel = 'community'; }]) {
     const forged = event('skill-market-btn');patch(forged);const before = sent.length;
     await guard.handle(forged);assert.equal(sent.length, before);
   }
-  assert.deepEqual(opened, ['skill-market-btn', 'open-site-btn']);
+  assert.deepEqual(opened, ['skill-market-btn']);
 } finally {
   guard.close();
   if (originalWindow === undefined) delete globalThis.window;else globalThis.window = originalWindow;
@@ -96,10 +93,10 @@ try {
   async function select(id) {
     await page.locator(`#nav button[data-panel=${id}]`).click();
     const panel = page.frameLocator('#panel-host iframe');
-    await panel.locator('h2').filter({ hasText: id === 'skills' ? '技能' : '社区' }).waitFor();
+    await panel.locator('h2').filter({ hasText: '技能' }).waitFor();
     assert.equal(await page.locator('#panel-host iframe').getAttribute('sandbox'), 'allow-scripts');
     assert.doesNotMatch(await page.locator('#panel-host iframe').getAttribute('src'), /public118-console|token=/);
-    if(id==='skills')await panel.locator('#tab-market').click();
+    await panel.locator('#tab-market').click();
     return panel;
   }
   async function dispatch(panel, label, url, status) {
@@ -120,23 +117,15 @@ try {
       catch (error) { if (error.code !== -32600) throw error; }
     }
   });
-  panel = await select('community');
-  await dispatch(panel, '打开官网', 'https://kondius.cn/qq-agent', '#community-link-status');
-  await panel.locator('body').evaluate(async () => {
-    const { openCommunityPage } = await import('/panels/panel-client.js');
-    try { await openCommunityPage('skill-market-btn');throw new Error('cross-target request was accepted'); }
-    catch (error) { if (error.code !== -32600) throw error; }
-  });
-  assert.equal(publicRequests.length, 2);
+  assert.equal(publicRequests.length, 1);
 
   console.log('· Launch failure is visible; retry opens once and neither link claims a remote operation succeeded');
   await page.evaluate(() => { window.qa118Open = window.open;window.open = () => { throw new Error('118 浏览器暂时不可用'); }; });
-  for (const [id, label, status] of [['community', '打开官网', '#community-link-status'], ['skills', '市场网页版', '#skill-market-status']]) {
+  for (const [id, label, status] of [['skills', '市场网页版', '#skill-market-status']]) {
     panel = await select(id);await panel.getByRole('button', { name: label, exact: true }).click();
     await panel.locator(`${status} .error`).filter({ hasText: '118 浏览器暂时不可用' }).waitFor();
     assert.equal(await panel.getByRole('button', { name: label, exact: true }).isEnabled(), true);
   }
-  assert.equal(publicRequests.length, 2);
   await page.evaluate(() => { window.open = window.qa118Open;delete window.qa118Open; });
   await dispatch(panel, '市场网页版', 'https://www.kondius.cn/qq-agent/skill-market/', '#skill-market-status');
   assert.equal(await panel.locator('#skill-market-status .error').count(), 0);
@@ -144,7 +133,7 @@ try {
   console.log('· Both headers keep all buttons reachable at the minimum and wide window sizes');
   for (const viewport of [{ width: 960, height: 640 }, { width: 1360, height: 860 }]) {
     await page.setViewportSize(viewport);
-    for (const id of ['skills', 'community']) {
+    for (const id of ['skills']) {
       panel = await select(id);
       const geometry = await panel.locator('body').evaluate(body => {
         const doc = body.ownerDocument, width = doc.documentElement.clientWidth;
@@ -163,7 +152,7 @@ try {
       }
     }
   }
-  assert.equal(publicRequests.length, 3);
+  assert.equal(publicRequests.length, 2);
   for (const request of publicRequests) {
     assert.equal(request.method, 'GET');assert.equal(new URL(request.url).search, '');assert.equal(request.headers.referer, undefined);
     assert.doesNotMatch(JSON.stringify(request), /public118-console|private-config-secret-118/);

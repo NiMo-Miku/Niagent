@@ -8,7 +8,7 @@ const read = name => fs.readFileSync(new URL(`../ui/${name}`, import.meta.url), 
 const manifest = JSON.parse(read('panels/manifest.json'));
 
 test('default navigation contains only supported application panels', () => {
-  assert.deepEqual(manifest.panels.map(panel => panel.id), ['sessions','chats','memory','usage','skills','plugins','logs','settings','community']);
+  assert.deepEqual(manifest.panels.map(panel => panel.id), ['sessions','chats','rules','memory','usage','skills','plugins','logs','settings']);
   for (const panel of manifest.panels) {
     assert.ok(fs.existsSync(new URL(`../ui/panels/${panel.id}/index.html`, import.meta.url)));
     assert.ok(panel.api.every(api => panel.id==='settings'&&['/api/local-protocols/stop','/api/accounts/stop'].includes(api.path)||!/\/(?:launch|stop|open-webui)$/.test(api.path)));
@@ -24,7 +24,7 @@ test('settings retain explicit protocol endpoints and credentials alongside loca
   assert.match(settings, /已有协议端也可手动连接/);
   assert.match(settings, /localProtocols\.mount\(localHost\)/);
   const local=manifest.panels.find(panel=>panel.id==='settings').api.filter(api=>api.path.startsWith('/api/local-protocols'));
-  assert.deepEqual(local.map(api=>[api.method,api.path]),[['GET','/api/local-protocols'],['POST','/api/local-protocols/rescan'],['POST','/api/local-protocols/start'],['POST','/api/local-protocols/stop'],['POST','/api/local-protocols/settings'],['GET','/api/local-protocols/output'],['GET','/api/local-protocols/login'],['POST','/api/local-protocols/login/connect'],['POST','/api/local-protocols/login/refresh'],['POST','/api/local-protocols/login/inject'],['POST','/api/local-protocols/login/close'],['POST','/api/local-protocols/login/visibility']]);
+  assert.deepEqual(local.map(api=>[api.method,api.path]),[['GET','/api/local-protocols'],['POST','/api/local-protocols/rescan'],['POST','/api/local-protocols/open-folder'],['POST','/api/local-protocols/start'],['POST','/api/local-protocols/stop'],['POST','/api/local-protocols/settings'],['GET','/api/local-protocols/output'],['GET','/api/local-protocols/login'],['POST','/api/local-protocols/login/connect'],['POST','/api/local-protocols/login/refresh'],['POST','/api/local-protocols/login/inject'],['POST','/api/local-protocols/login/close'],['POST','/api/local-protocols/login/visibility']]);
   for(const panel of manifest.panels.filter(panel=>panel.id!=='settings'))assert.ok(!panel.api.some(api=>api.path.startsWith('/api/local-protocols')||api.path.startsWith('/api/accounts')));
   const start=settings.indexOf("if (name === 'settings-section'"),end=settings.indexOf("if (name === 'status' && payload?.reset)",start);
   assert.ok(start>=0&&end>start,'default panel has its navigation event handler');

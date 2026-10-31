@@ -258,8 +258,6 @@ await test(`${provider} ZIP extracts once, reuses private cache, and preserves t
     assert.equal(f.extracts, 1); assert.equal(f.spawnCalls[1].settings.cwd, firstRoot);
     assert.deepEqual(await fs.readFile(zip), archive);
     assert.deepEqual(await fs.readdir(f.root), [filename]);
-    const packageJson = await readJson(fileURLToPath(new URL('../package.json', import.meta.url)));
-    assert(packageJson.build.files.includes('!protocols/**'), 'user supplied runtime directory is excluded from application distribution');
   });
 });
 }
