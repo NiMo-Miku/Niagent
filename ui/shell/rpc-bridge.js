@@ -6,7 +6,7 @@ import {currentAccountScope,normalizeAccountId} from '../panels/account-scope.js
 import {accountNavigationUrl} from './account-navigation.js';
 
 const RPC={INVALID:-32600,NOT_FOUND:-32601,FORBIDDEN:-32003,INTERNAL:-32603};
-const RPC_METHODS=new Set(['settings.saveState','settings.save','api.request','ctx.call','ctx.getConfig','ctx.notify','ui.confirm','ui.notify','ui.openExternal','ui.destructiveProgress','console.manageToken','console.update','community.publishQuote','community.cancelQuotePublish','theme.apply','appearance.open','appearance.select','panel.ready','panel.contentReady','panel.flushed']);
+const RPC_METHODS=new Set(['settings.saveState','settings.save','api.request','ctx.call','ctx.getConfig','ctx.setConfig','ctx.notify','ui.confirm','ui.notify','ui.openExternal','ui.destructiveProgress','console.manageToken','console.update','community.publishQuote','community.cancelQuotePublish','theme.apply','appearance.open','appearance.select','panel.ready','panel.contentReady','panel.flushed']);
 const PROTOCOL_LOGIN_POSTS=new Set(['connect','refresh','inject','close','visibility'].map(action=>'/api/local-protocols/login/'+action));
 const validProtocolSession=value=>typeof value==='string'&&value.length>0&&value.length<=256;
 const EXTERNAL_TARGETS_BY_PANEL=new Map([
@@ -21,7 +21,7 @@ function routePattern(path) {
 
 /** Opaque-origin iframes require targetOrigin="*"; source + panel id + one-time nonce authenticate every message. */
 export class RpcBridge {
-  constructor({frame,api,controlApi=api,manifest,timeout=15000,onUserCall=async()=>{throw new Error('当前运行环境未提供该能力');},onUserConfig=async()=>({}),onNotify=()=>{},onReady=null,onTheme=null,onOpenExternal=null,onPublishQuote=null,onManageConsoleToken=null,onUpdateAction=null,onDestructiveProgress=null,viewState=null,onAccountStopped=id=>{if(id===currentAccountScope.id&&id!=='primary')window.location.assign(accountNavigationUrl('primary',manifest?.id));}}={}) {
+  constructor({frame,api,controlApi=api,manifest,timeout=15000,onUserCall=async()=>{throw new Error('当前运行环境未提供该能力');},onUserConfig=async()=>({}),onNotify=()=>{},onUserSetConfig=null,onReady=null,onTheme=null,onOpenExternal=null,onPublishQuote=null,onManageConsoleToken=null,onUpdateAction=null,onDestructiveProgress=null,viewState=null,onAccountStopped=id=>{if(id===currentAccountScope.id&&id!=='primary')window.location.assign(accountNavigationUrl('primary',manifest?.id));}}={}) {
     this.frame=frame; this.api=api; this.controlApi=controlApi;this.onAccountStopped=onAccountStopped;this.manifest=manifest??{}; this.timeout=timeout; this.onUserCall=onUserCall; this.onUserConfig=onUserConfig; this.onNotify=onNotify; this.onReady=onReady; this.onTheme=onTheme; this.onOpenExternal=onOpenExternal;this.onPublishQuote=onPublishQuote;this.quoteController=null;
     this.onManageConsoleToken=onManageConsoleToken;this.onUpdateAction=onUpdateAction;
     this.onDestructiveProgress=onDestructiveProgress;this.destructiveProgressActive=false;this.leaving=false;
@@ -174,11 +174,12 @@ export class RpcBridge {
     finally { clearTimeout(timer);this.controllers.delete(controller); }
   }
   async handleUser(message) {
-    if(!['ctx.call','ctx.getConfig','ctx.notify'].includes(message.method))return this.fail(message.id,RPC.NOT_FOUND,'用户面板仅允许 ctx.call、ctx.getConfig、ctx.notify');
+    if(!['ctx.call','ctx.getConfig','ctx.setConfig','ctx.notify'].includes(message.method))return this.fail(message.id,RPC.NOT_FOUND,'用户面板仅允许 ctx.call、ctx.getConfig、ctx.setConfig、ctx.notify');
     try {
       let result;
       if(message.method==='ctx.call')result=await this.onUserCall(message.params?.tool,message.params?.args??{},this.manifest.id,this.manifest.generation);
       else if(message.method==='ctx.getConfig')result=await this.onUserConfig(message.params?.key,this.manifest.id,this.manifest.generation);
+      else if(message.method==='ctx.setConfig'){const patch=message.params?.patch;if(!patch||typeof patch!=='object'||Array.isArray(patch))return this.fail(message.id,RPC.INVALID,'配置补丁必须是对象');result=await this.onUserSetConfig(patch,this.manifest.id,this.manifest.generation);}
       else {this.onNotify(String(message.params?.text??''));result={ok:true};}
       this.reply(message.id,result);
     } catch(error) { this.fail(message.id,RPC.FORBIDDEN,error.message); }

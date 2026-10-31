@@ -33,8 +33,8 @@ function normalize(def) {
 }
 
 export class PanelRegistry {
-  constructor({root=currentAccountScope.base+'/panels',frameHost,api,controlApi=api,onNotify,onUserCall,onUserConfig,onOpenExternal,onPublishQuote,onManageConsoleToken,onUpdateAction,onDestructiveProgress,viewState=createPanelViewState()}={}) {
-    this.root=root.replace(/\/$/,'');this.frameHost=frameHost;this.api=api;this.controlApi=controlApi;this.onNotify=onNotify;this.onUserCall=onUserCall;this.onUserConfig=onUserConfig;this.onOpenExternal=onOpenExternal;this.onPublishQuote=onPublishQuote;
+  constructor({root=currentAccountScope.base+'/panels',frameHost,api,controlApi=api,onNotify,onUserCall,onUserConfig,onUserSetConfig,onOpenExternal,onPublishQuote,onManageConsoleToken,onUpdateAction,onDestructiveProgress,viewState=createPanelViewState()}={}) {
+    this.root=root.replace(/\/$/,'');this.frameHost=frameHost;this.api=api;this.controlApi=controlApi;this.onNotify=onNotify;this.onUserCall=onUserCall;this.onUserConfig=onUserConfig;this.onUserSetConfig=onUserSetConfig;this.onOpenExternal=onOpenExternal;this.onPublishQuote=onPublishQuote;
     this.onManageConsoleToken=onManageConsoleToken;this.onUpdateAction=onUpdateAction;
     this.onDestructiveProgress=onDestructiveProgress;
     this.defs=new Map();this.current=null;this.viewState=viewState;
@@ -81,7 +81,7 @@ export class PanelRegistry {
     const viewState=stateLease?{read:()=>this.viewState.read(stateLease),leave:id=>this.viewState.leave(stateLease,id),finish:(id,data)=>this.viewState.finish(stateLease,id,data),expire:()=>this.viewState.expire(stateLease),cancel:id=>this.viewState.cancel?.(stateLease,id)}:null;
     const bridge=new RpcBridge({
       viewState,controlApi:this.controlApi,
-      frame,api:this.api,manifest:definition,onNotify:this.onNotify,onUserCall:this.onUserCall,onUserConfig:this.onUserConfig,onOpenExternal:this.onOpenExternal,onPublishQuote:this.onPublishQuote,onManageConsoleToken:this.onManageConsoleToken,onUpdateAction:this.onUpdateAction,onDestructiveProgress:this.onDestructiveProgress,
+      frame,api:this.api,manifest:definition,onNotify:this.onNotify,onUserCall:this.onUserCall,onUserConfig:this.onUserConfig,onUserSetConfig:this.onUserSetConfig,onOpenExternal:this.onOpenExternal,onPublishQuote:this.onPublishQuote,onManageConsoleToken:this.onManageConsoleToken,onUpdateAction:this.onUpdateAction,onDestructiveProgress:this.onDestructiveProgress,
       onReady:()=>{ try{ bridge.event('theme',getCurrentTheme());if(definition.kind==='bundled'&&id==='settings')bridge.event('viewport-size',this.viewportSize());bridge.event('refresh-policy',{interval:getRefreshInterval()});this.onAppearance?.('appearance.ready',null,definition.id);if(this.visualEditorState)bridge.event('visual-editor',this.visualEditorState());if(settingsSection)bridge.event('settings-section',settingsTarget); }catch{/* 推送失败不影响面板功能 */} },
       onTheme:(tokens)=>{ this.applyThemeEverywhere(tokens); },
     });

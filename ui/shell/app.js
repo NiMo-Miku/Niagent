@@ -209,6 +209,7 @@ const registry=new PanelRegistry({
   onManageConsoleToken:()=>{if(!tokenManagement)throw new Error('控制台尚未就绪');return tokenManagement.open();},
   onUserCall:(tool,args,panel,generation)=>api.post(`/api/panels/${encodeURIComponent(panel)}/call`,{tool,args,generation}),
   onUserConfig:(key,panel,generation)=>api.post(`/api/panels/${encodeURIComponent(panel)}/config`,{key,generation}),
+  onUserSetConfig:(patch,panel,generation)=>api.post(`/api/panels/${encodeURIComponent(panel)}/config/save`,{patch,generation}),
   onPublishQuote:(payload,options)=>publishQuoteFromHost(api,payload,options),
   onOpenExternal:(target,context)=>{
     const url=['local-protocol-login','protocol-login-native'].includes(target)?localProtocolLoginUrl(context?.protocolUrl):LOCAL_PROTOCOL_RELEASES[target]||externalLinks[target];

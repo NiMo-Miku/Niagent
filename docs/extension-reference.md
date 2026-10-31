@@ -90,6 +90,7 @@ export default {
 | `capabilities` | string[]，默认 `[]` | 对外能力的说明元数据；还必须实际 registerCapability |
 | `prompt` | `{sections:[...]}` 或 null | 静态提示片段，见第 10 节；不要使用旧 `{when,instruction,examples}` 形状 |
 | `panels` | array，默认 `[]` | 可以声明面板；建议普通作者使用 setup 中的 ui.panel.register，避免重复注册 |
+| `configPage` | `{title?,entry?,id?}` | 声明式配置页：装载时自动物化为侧边栏用户面板（id 默认 `<id>_config`，title 默认扩展名，entry 相对自身 ui/、默认 index.html）。运行时再注册同 id 会被判重复。效果等同 setup 里的 ui.panel.register，但零运行时代码 |
 | `tools` | array，默认 `[]` | 说明元数据，不自动注册工具 |
 | `deprecated` | boolean，默认 false | 弃用标记 |
 
@@ -409,7 +410,7 @@ export default {
 
 ## 12. 完整自有面板
 
-面板是 opaque-origin 沙箱 iframe，不能读宿主 DOM、本地存储或控制台令牌，也不能访问任意后台 API。普通面板仅 `ctx.call`（自身工具）、`ctx.getConfig`（自身脱敏配置）、`ctx.notify`。不要复制默认 bundled 面板里的 request/api.request 用法。
+面板是 opaque-origin 沙箱 iframe，不能读宿主 DOM、本地存储或控制台令牌，也不能访问任意后台 API。普通面板仅 `ctx.call`（自身工具）、`ctx.getConfig`（自身脱敏配置）、`ctx.setConfig`（写回自身配置，见下方「配置页」）、`ctx.notify`。不要复制默认 bundled 面板里的 request/api.request 用法。
 
 在第 2 节 text-count 清单 permissions 加 `ui.panel`，在 setup 中加入：
 
@@ -418,6 +419,15 @@ await ctx.ui.panel.register({ id: 'text_count_panel', title: '文本统计', ent
 ```
 
 此处 setup 必须改成 `async setup(ctx)`。`entry` 相对于自身 ui/，不要写 ui/index.html、../、绝对路径、query 或 hash；资源与入口都放 ui/ 内。size 是可选展示元信息，通常省略。id 只用 `[A-Za-z0-9_-]`，不与其它面板重名。停用/卸载/热更会撤销本代面板及资源地址。
+
+### 配置页：声明式 configPage + ctx.setConfig（2026-10-31）
+
+两个专用入口，与设置弹窗是相互独立的线路（弹窗保持简略表单，配置页由扩展完全自定义）：
+
+1. **声明式**：清单加 `"configPage": {"title": "文本统计设置"}`，装载时自动在侧边栏生成用户面板——零运行时代码。可选 `entry`（相对自身 ui/，默认 index.html）与 `id`（默认 `<id>_config`）。
+2. **页面内写回**：`ctx.setConfig(patch)` 保存自身配置。键必须是 configSchema 声明过的项并按 schema 校验类型；密钥字段直接写新值，或用 `{"hasApiKey": true}` 保留现值、`{"hasApiKey": false}` 清除（与读回视图的 hasXxx 键名对应）。返回脱敏后的完整配置视图，插件内 `ctx.config.get` 立即可见新值。
+
+两种入口都要求清单声明 `ui.panel` 并经管理员授权；停用、卸载或热重载撤销本代页面与资产地址。
 
 `ui/index.html`：
 

@@ -76,7 +76,7 @@ export const publishQuote=payload=>rpc('community.publishQuote',payload,180000);
 export const cancelQuotePublish=()=>rpc('community.cancelQuotePublish');
 export const confirmAction=(text)=>rpc('ui.confirm',{text},120000);
 export const notify=(text)=>rpc('ui.notify',{text});
-export const ctx={call:(tool,args)=>rpc('ctx.call',{tool,args}),getConfig:(key)=>rpc('ctx.getConfig',{key}),notify:(text)=>rpc('ctx.notify',{text})};
+export const ctx={call:(tool,args)=>rpc('ctx.call',{tool,args}),getConfig:(key)=>rpc('ctx.getConfig',{key}),setConfig:(patch)=>rpc('ctx.setConfig',{patch},30000),notify:(text)=>rpc('ctx.notify',{text})};
 export const onShellEvent=fn=>{events.add(fn);return()=>events.delete(fn);};
 export const onLeave=fn=>{leaveHandlers.add(fn);return()=>leaveHandlers.delete(fn);};
 export const onBeforeLeave=fn=>{beforeLeaveHandlers.add(fn);return()=>beforeLeaveHandlers.delete(fn);};

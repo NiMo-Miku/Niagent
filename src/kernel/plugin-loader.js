@@ -176,7 +176,23 @@ export function normalizeManifest(raw, fallbackId) {
       permissions: Array.isArray(m.permissions) ? m.permissions : [],
       // legacyTrusted 不采用：清单不是管理员授权。
       legacyTrusted: false,
-      panels: Array.isArray(m.panels) ? m.panels : [], // 面板声明（原样透传，校验在 console/panel-adapters.js）
+      // configPage：声明式配置页（免运行时 ui.panel.register）。物化为用户面板，
+      // id 稳定为 <id>_config，运行时注册同名 id 会被判重复；ui/ 缺失时静默不列出。
+      panels: [
+        ...(Array.isArray(m.panels) ? m.panels : []),
+        ...(() => {
+          const page = m.configPage && typeof m.configPage === 'object' ? m.configPage : null;
+          if (!page) return [];
+          const title = typeof page.title === 'string' && page.title.trim() ? page.title.trim() : (typeof m.name === 'string' && m.name.trim() ? m.name.trim() : id);
+          const entry = typeof page.entry === 'string' && page.entry ? page.entry : 'index.html';
+          if (/[\\:%\x00-\x1f?#]/.test(entry) || entry.split('/').some((part) => !part || part === '.' || part === '..' || part.startsWith('.'))) {
+            problems.push({ level: 'error', msg: `configPage.entry 非法：${entry}` });
+            return [];
+          }
+          const pid = typeof page.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(page.id) ? page.id : `${sanitize(id).slice(0, 40)}_config`;
+          return [{ id: pid, title, entry, permissions: ['ui.panel'] }];
+        })(),
+      ], // 面板声明（原样透传，校验在 console/panel-adapters.js）
       legacy: m.apiVersion === 0 || m.compat === '04' || m.compat04 === true || m.legacyApi === '0.4' || Boolean(m.prompt && !Array.isArray(m.prompt.sections) && (m.prompt.when || m.prompt.instruction || Array.isArray(m.prompt.examples))),
       tools: Array.isArray(m.tools) ? m.tools : [], // 元数据，不自动注册
       hostConfig: Array.isArray(m.hostConfig) ? [...new Set(m.hostConfig.filter((key) => typeof key === 'string'))] : [],

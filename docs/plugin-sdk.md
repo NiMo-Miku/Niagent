@@ -58,7 +58,7 @@ export default {
 
 | 接口 | 行为 |
 |---|---|
-| `ctx.config.get(key)` / `all()` | 读取自身 `configSchema` 字段及设置；插件自身可读取自己的密钥。面板配置 RPC 使用脱敏 DTO。 |
+| `ctx.config.get(key)` / `all()` | 读取自身 `configSchema` 字段及设置；插件自身可读取自己的密钥。面板配置 RPC 使用脱敏 DTO；面板侧另有 `ctx.setConfig(patch)` 写回（schema 校验 + 密钥 hasXxx 保留/清除）。 |
 | `ctx.config.onChange(fn)` | 收到自身 schema 的配置快照；停用、热更、卸载时撤销订阅。 |
 | `ctx.storage` | 插件自己的持久化命名空间。 |
 | `ctx.scheduler.every/at` | 定时任务归属本插件，停止时回收。 |
@@ -66,7 +66,7 @@ export default {
 | `ctx.send(chatKey, segments, options)` | 受 `qq.send` 控制，经宿主真实发送队列。 |
 | `ctx.lifecycle.signal` | 插件实例停止时中止。 |
 | `ctx.lifecycle.onStop(fn)` | 注册清理函数，返回可手动撤销的 disposer。 |
-| `ctx.ui.panel.register({id,title,entry,size})` | 异步请求 `ui.panel`，仅允许自身 `ui/` 内相对 HTML；返回 `{id,dispose}`。 |
+| `ctx.ui.panel.register({id,title,entry,size})` | 异步请求 `ui.panel`，仅允许自身 `ui/` 内相对 HTML；返回 `{id,dispose}`。清单改用声明式 `configPage` 可免运行时代码，装载即出现在侧边栏（id 默认 `<id>_config`）。 |
 | `ctx.registerCapability(name, provider, options)` | 注册本插件拥有的能力，停止时撤销；`options.default` 声明默认回退。 |
 | `ctx.capability(name, ...args)` / `hasCapability(name)` | 消费能力；函数提供者会以参数调用，对象能力提供受控方法。 |
 
@@ -147,6 +147,8 @@ export default {
 ## 面板设计系统与动效（2026-10-13）
 
 新页面仍由插件注册，UI 主题没有增加宿主权限。插件在自身 `ui/` 目录放入 HTML、JS 和图片，再通过 `ctx.ui.panel.register({ id, title, entry: 'index.html' })` 注册；清单必须声明 `ui.panel`，由管理员授权。停用、卸载或热重载后，宿主撤销该代面板与资产地址。
+
+2026-10-31 起支持声明式配置页：清单 `"configPage": {title?,entry?,id?}` 装载即生成侧边栏页面（免运行时注册），页面经 `ctx.setConfig(patch)` 保存自身 configSchema 配置（密钥字段支持 `hasXxx: true|false` 保留/清除）。该线路独立于设置弹窗：弹窗保持简略表单，配置页由扩展完全自定义。
 
 ```html
 <!doctype html>
