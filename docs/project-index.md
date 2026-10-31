@@ -75,7 +75,7 @@ QQ Agent 0.5 是 QQ 机器人的「DSH 薄内核 + 全插件」从零重写版(N
 |---|---|---|
 | `routes.js` | 1462 | M3 全量路由唯一事实源:status/usage/价格/渠道/人设/扩展安装/能力选择/会话/聊天/记忆/市场/暂停/重置 + 组合层贡献路由的 scoped registry;**最大文件** |
 | `builtin-model-prices.js` | 1238 | 内置模型价格历史静态数据 |
-| 其余 37 个 | 各 2–402 行 | 拆出的控制器:memory-media-adapters、price-update-adapters、panel-adapters(用户面板窄宿主)、panel-protocol(iframe JSON-RPC)、provider-adapters、vision-scan-adapter、session-names、search-provider-adapter、extension-updates、background-uploads(魔数校验)、key-access(明文密钥守卫)、serializers(无密钥 DTO)、local-fonts、local-protocols、group-management、forward-adapter、sse-bridge 等;mcp-adapter/community-market-adapters 为 2 行 shim |
+| 其余 37 个 | 各 2–402 行 | 拆出的控制器:memory-media-adapters、price-update-adapters、panel-adapters(用户面板窄宿主)、panel-protocol(iframe JSON-RPC)、provider-adapters、vision-scan-adapter、session-names、search-provider-adapter、extension-updates、background-uploads(魔数校验)、key-access(明文密钥守卫)、serializers(无密钥 DTO)、local-fonts、local-protocols、group-management、forward-adapter、sse-bridge 等;mcp-adapter/community-market-adapters 为 2 行 shim、prompt-preview-adapter(提示词组装调试预览 /api/debug/prompt/*) |
 
 ### 4.4 其余子目录
 

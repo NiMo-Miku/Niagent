@@ -133,3 +133,11 @@ body[data-custom-state-paint="on"] :is(.list-item.selected,.list-item.is-active)
 .bg-editor-hint { font-size: 11px; color: var(--muted); }
 @media (max-width: 1000px) { .bg-editor { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) { main { padding: var(--page-padding,16px); } .grid, .split { grid-template-columns: minmax(0, 1fr); } .head > .actions { margin-left: 0; } .row { flex-wrap: wrap; } }
+
+/* 提示词组装调试预览(扩展卡片 + 人设分区) */
+.extension-prompt-preview,.persona-prompt-preview{margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--surface-2,#ffffff08);}
+.extension-prompt-preview>summary,.persona-prompt-preview>summary{cursor:pointer;font-size:12px;opacity:.75;user-select:none;}
+.extension-prompt-preview>summary:hover,.persona-prompt-preview>summary:hover{opacity:1;}
+.extension-prompt-body,.persona-prompt-output{max-height:320px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;margin:8px 0 4px;}
+.persona-prompt-chat{margin:8px 0 4px;display:flex;gap:8px;align-items:center;}
+.persona-prompt-chat select{max-width:280px;}

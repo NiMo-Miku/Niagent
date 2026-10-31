@@ -354,12 +354,13 @@ export function createKernel({
   }), ['onIncoming', 'wake', 'scheduleWake', 'resume', 'retrySession', 'startProactiveLoop', 'startReminderLoop']);
   // Install the lazy selected-store consumer during composition, not only when
   // HTTP starts. Merely constructing the application performs no remote sync.
-  orchestrator._inject?.setStickerListProvider?.(async (chatKey, max, {signal} = {}) => {
+  const stickerPromptProvider = async (chatKey, max, {signal} = {}) => {
     if (cfg().sticker?.enabled === false) return '';
     await stickers.syncFromQQ?.({signal});
     if (signal?.aborted) throw signal.reason ?? new Error('已中止');
     return stickers.buildPromptContext(max);
-  });
+  };
+  orchestrator._inject?.setStickerListProvider?.(stickerPromptProvider);
 
   // ---- 核心工具说明 ----
   // 28 个工具全部落捆绑插件（DSH §3.2 / A-2 裸 id）：core-tools（send_message/send_to/send_poke/finish/report_feedback）
@@ -437,7 +438,7 @@ export function createKernel({
       return settings?.saveLifecycle?.kind === 'settings-v1'
         ? { owner: settings.stateOwner, generation: settings.stateGeneration } : null;
     },
-    startedAt, version: VERSION, appId: APP_ID, dataDir, transport: transportView, profile, appRoot, extensionRoot, publicPrefix:env.QQ_AGENT_ACCOUNT_PREFIX||'', personaText, services, components, composition, lifecycle, localProtocols, protocolLogin,management,
+    startedAt, version: VERSION, appId: APP_ID, dataDir, transport: transportView, profile, appRoot, extensionRoot, publicPrefix:env.QQ_AGENT_ACCOUNT_PREFIX||'', personaText, services, components, composition, lifecycle, localProtocols, protocolLogin,management, stickerListProvider: stickerPromptProvider,
     resetData: async () => {
       try { return await resetCoordinator.request(); }
       finally { bus.emit('status', { reset: resetCoordinator.status() }); }

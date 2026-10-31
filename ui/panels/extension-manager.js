@@ -312,7 +312,16 @@ export function renderExtensions(items,kind,reload,updates=[]){
       const card=row('','',[toggle,settings,hot,permissions]),description=document.createElement('p'),identity=document.createElement('small'),diagnostics=document.createElement('div'),dependencies=document.createElement('small'),location=document.createElement('details'),locationTitle=document.createElement('summary'),path=document.createElement('code');
       card.dataset.extensionId=extension.id;card.dataset.motionKey=`extension:${extension.root}:${extension.id}`;
       description.className='extension-description';identity.className='extension-id';diagnostics.className='extension-diagnostics';dependencies.className='extension-dependencies';location.dataset.extensionPath=extension.id;locationTitle.textContent='根目录';path.className='extension-root-path';location.append(locationTitle,path);card.append(description,identity,diagnostics,dependencies,location);
-      Object.assign(entry,{card,title:card.querySelector('strong'),summary:card.querySelector('.muted'),actions:card.querySelector('.actions'),toggle,settings,hot,permissions,description,identity,diagnostics,dependencies,path});
+      const promptPreview=document.createElement('details');promptPreview.className='extension-prompt-preview';
+      const previewSummary=document.createElement('summary');previewSummary.textContent='提示词片段预览';promptPreview.append(previewSummary);
+      const previewBody=document.createElement('pre');previewBody.className='extension-prompt-body';previewBody.hidden=true;promptPreview.append(previewBody);
+      promptPreview.addEventListener('toggle',()=>{if(!promptPreview.open||previewBody.dataset.loaded==='1')return;previewBody.hidden=false;previewBody.textContent='读取中…';
+        request('GET','/api/debug/prompt/sections').then(({sections})=>{const mine=(sections||[]).filter(x=>x.owner===extension.id);
+          const head=mine.length?mine.map(x=>`【${x.id||'片段'} · priority ${x.priority}】`).join('\n')+'\n\n':'';
+          previewBody.textContent=head+(mine.length?mine.map(x=>x.text).join('\n\n'):'该扩展没有注入提示词片段(清单 prompt.sections 或 ctx.prompt.add)。');previewBody.dataset.loaded='1';})
+          .catch(error=>{previewBody.textContent='读取失败:'+error.message;});});
+      card.append(promptPreview);
+      Object.assign(entry,{card,title:card.querySelector('strong'),summary:card.querySelector('.muted'),actions:card.querySelector('.actions'),toggle,settings,hot,permissions,description,identity,diagnostics,dependencies,path,promptPreview});
       entry.updateControls=createExtensionUpdateControls(entry);entry.actions.append(entry.updateControls.check,entry.updateControls.update);card.append(entry.updateControls.note);view.entries.set(extension.id,entry);
     }
     Object.assign(entry,{extension,reload});

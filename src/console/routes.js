@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import {registerBackgroundUploads} from './background-uploads.js';
+import { createPromptPreviewAdapter } from './prompt-preview-adapter.js';
 import { parseProviderCatalog } from './provider-catalog.js';
 import { providerEditPatch, providerModelEditPatch, providerCredentialRevision } from './provider-edit.js';
 import { chatIsVisible } from './chat-visibility.js';
@@ -612,7 +613,10 @@ export function registerConsoleRoutes(http, deps) {
     const shaped = (detailUnavailable ? [] : rows).map((row) => ({ ...row, key: by === 'session' ? row.sessionId : by === 'provider' ? row.provider : row.chatKey ?? row.model ?? row.day ?? row.hour, cacheHitRate: row.cacheHitRate ?? (row.promptTokens ? Math.min(1, Math.max(0, row.cachedTokens / row.promptTokens)) : 0) }));
     return { ok: true, range: String(range), dim: query.dim ?? '', key: query.key ?? '', by: query.by ?? '', ...(provider == null ? {} : { provider }), ...(detailUnavailable ? { detailUnavailable: true } : {}), totals: stats.totals, rows: shaped.sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0)), showPeak };
   });
-  http.route('GET', '/api/model-prices', ({ query }) => priceAdapterFor('snapshot').snapshot(query.model, {models:query.models,resolveModelPrice:(model,current)=>priceFor(model,current,routeDeps)}));
+  const promptPreview = createPromptPreviewAdapter({ cfg, loader, memory, store, registry, components: deps.components ?? {}, stickerListProvider: deps.stickerListProvider ?? null });
+  http.route('GET', '/api/debug/prompt/sections', () => ({ ok: true, sections: promptPreview.sections() }));
+  http.route('GET', '/api/debug/prompt/full', ({ query }) => promptPreview.full({ chatKey: typeof query.chatKey === 'string' ? query.chatKey : null }));
+    http.route('GET', '/api/model-prices', ({ query }) => priceAdapterFor('snapshot').snapshot(query.model, {models:query.models,resolveModelPrice:(model,current)=>priceFor(model,current,routeDeps)}));
   http.route('POST', '/api/model-prices/refresh', ({ query }) => priceAdapterFor('refresh').refresh(query.model, {models:query.models,resolveModelPrice:(model,current)=>priceFor(model,current,routeDeps)}));
 
   http.route('GET', '/api/model-price-overrides', () => modelPriceSettings.get());

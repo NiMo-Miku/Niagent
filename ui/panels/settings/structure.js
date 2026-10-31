@@ -176,6 +176,23 @@ export function composeSettingsStructure({sections,host,read,write,request,save,
   if(personaLibrary){
     const parked=node('div','persona-library-state');parked.hidden=true;parked.append(...personaRoot.fields.childNodes,personaRoot.card.querySelector('#persona-template-manager'),personaRoot.card.querySelector('#persona-by-chat-manager'));
     personaRoot.fields.replaceChildren(personaLibraryHost,parked);watch(['persona','personaUnified'],personaLibrary.sync);disposers.push(personaLibrary.dispose);
+  // 完整组装预览(调试):与真实运行同一套 core.prompt.* 组装函数,实时查看当前配置下的完整提示词。
+  const promptPreview=node('details','persona-prompt-preview full');
+  const previewSummary=node('summary','','完整组装预览(调试)');
+  const previewChat=node('select','persona-prompt-chat');previewChat.append(new Option('通用(无聊天上下文)',''));
+  const previewRefresh=node('button','settings-toggle-card');previewRefresh.type='button';previewRefresh.textContent='刷新组装';
+  const previewPre=node('pre','pre persona-prompt-output');previewPre.textContent='展开后按当前配置实时组装完整提示词。';
+  promptPreview.append(previewSummary,previewChat,previewRefresh,previewPre);
+  personaRoot.fields.append(promptPreview);
+  let previewChatsLoaded=false,previewBusy=false;
+  async function refreshPromptPreview(){ if(previewBusy)return;previewBusy=true;previewRefresh.disabled=true;previewPre.textContent='组装中…';
+    try{ const key=previewChat.value||''; const view=await request('GET',`/api/debug/prompt/full${key?`?chatKey=${encodeURIComponent(key)}`:''}`);
+      const d=view.counts||{};previewPre.textContent=`${view.system}\n\n────── 用户提示词(触发批为空的骨架) ──────\n\n${view.user}\n\n(系统 ${d.systemChars} 字 · 用户 ${d.userChars} 字 · 工具 ${d.toolCount} 个 · 已读 ${d.pastCount} 条)`;
+      if(!previewChatsLoaded){previewChatsLoaded=true;try{const list=await request('GET','/api/chats');for(const chat of (list.chats||[]).slice(0,80))previewChat.append(new Option(chat.chatName||chat.chatKey,chat.chatKey));}catch{}}}
+    catch(error){previewPre.textContent='组装失败:'+error.message;}finally{previewBusy=false;previewRefresh.disabled=false;}}
+  previewRefresh.addEventListener('click',()=>{void refreshPromptPreview();});
+  previewChat.addEventListener('change',()=>{void refreshPromptPreview();});
+  promptPreview.addEventListener('toggle',()=>{ if(!promptPreview.open)return; void (async()=>{ try{ if(!previewChatsLoaded){const list=await request('GET','/api/chats');for(const chat of (list.chats||[]).slice(0,80))previewChat.append(new Option(chat.chatName||chat.chatKey,chat.chatKey));previewChatsLoaded=true;} await refreshPromptPreview(); }catch(error){previewPre.textContent='加载失败:'+error.message;} })(); });
   }else{
   // A replacement presentation may opt into the earlier inline editor.
   const persona=nav.get('persona'),unified=field('personaUnified'),global=node('div','settings-fields settings-persona-global');
