@@ -1,0 +1,163 @@
+/* ── 量化线场（quantized line field）────────────────────────────────────────
+   默认外观。取自「纸面编辑式版面 + 量化线场」的设计语言：
+     · 纸面底色、墨色正文、克制的主蓝，红色只用于危险/强调；
+     · 表面一律平涂，边界 1px 硬边，不用模糊阴影与玻璃效果；
+     · 卡片用「实心偏移底板」制造层次，悬停时整体上移、底板下移；
+     · 标题用衬线字体，技术性小字用等宽字体；
+     · 背景是极低对比的量化线场（四档线宽/透明度），静止不闪动。
+   所有规则都挂在 body[data-preset="quantized"] 下，切回其他预设即完全失效。 */
+
+body[data-preset="quantized"] {
+  /* 该预设的质感基调：硬度优先，去掉浮起与模糊。 */
+  --hover-lift: 0px;
+  --press-scale: .99;
+  --shadow-lift: none;
+  --bevel: none;
+  --press: none;
+  --hover-soft: color-mix(in srgb, var(--accent) 6%, transparent);
+  --hover-surface: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  --selected-surface: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  --focus-width: 2px;
+}
+
+/* ── 背景：四档量化线场（只在 shell 画一层，面板保持透明避免叠加）─────── */
+body[data-preset="quantized"]:not([data-panel]):not([data-bg-image="on"]) {
+  background-color: var(--bg);
+  background-image:
+    /* 3.80 档：最宽的定位线，间距最大 */
+    repeating-linear-gradient(90deg, rgb(32 34 32 / .07) 0 2px, transparent 2px 240px),
+    /* 2.28 档 */
+    repeating-linear-gradient(90deg, rgb(32 34 32 / .05) 0 1px, transparent 1px 60px),
+    /* 1.12 档 */
+    repeating-linear-gradient(90deg, rgb(32 34 32 / .035) 0 1px, transparent 1px 24px),
+    /* 0.38 档：最细的底纹 */
+    repeating-linear-gradient(90deg, rgb(32 34 32 / .02) 0 1px, transparent 1px 8px);
+  background-attachment: fixed;
+}
+
+/* ── 卡片：实心偏移底板，取代模糊阴影 ─────────────────────────────────── */
+body[data-preset="quantized"] .card,
+body[data-preset="quantized"] .list-item,
+body[data-preset="quantized"] .metric {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card, 4px);
+  box-shadow: 0 6px 0 0 color-mix(in srgb, var(--line) 65%, transparent);
+  transition: transform 300ms cubic-bezier(.16, 1, .3, 1), box-shadow 300ms cubic-bezier(.16, 1, .3, 1), border-color 160ms ease-out;
+}
+body[data-preset="quantized"] .card:hover,
+body[data-preset="quantized"] .list-item:hover,
+body[data-preset="quantized"] .metric:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 0 color-mix(in srgb, var(--line) 65%, transparent);
+  border-color: var(--line-strong);
+}
+body[data-preset="quantized"] .list-item.selected,
+body[data-preset="quantized"] .list-item.is-active {
+  border-color: var(--accent);
+  background: var(--selected-surface);
+  box-shadow: 0 6px 0 0 color-mix(in srgb, var(--accent) 22%, transparent);
+}
+/* 右上角的装饰角标在该预设下属于噪音，去掉。 */
+body[data-preset="quantized"] .card::after { content: none; }
+
+/* ── 控件：硬边、小圆角、主蓝聚焦环 ──────────────────────────────────── */
+body[data-preset="quantized"] :is(button, input, select, textarea) {
+  border-radius: var(--radius-button, 3px);
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, transform 120ms ease-out;
+}
+body[data-preset="quantized"] button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+body[data-preset="quantized"] button:hover:not(:disabled) {
+  transform: none;
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+body[data-preset="quantized"] button:active:not(:disabled) {
+  transform: translateY(1px);
+  background: var(--surface-3);
+}
+body[data-preset="quantized"] button.primary {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+body[data-preset="quantized"] button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 88%, var(--accent));
+  border-color: color-mix(in srgb, var(--text) 88%, var(--accent));
+}
+body[data-preset="quantized"] button.danger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--bad) 55%, var(--line));
+  color: var(--bad);
+}
+body[data-preset="quantized"] button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad) 8%, var(--surface));
+  border-color: var(--bad);
+}
+body[data-preset="quantized"] :is(input, select, textarea) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+body[data-preset="quantized"] :is(input, select, textarea):focus,
+body[data-preset="quantized"] :is(input, select, textarea):focus-visible {
+  outline: none;
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent2) 30%, transparent);
+}
+body[data-preset="quantized"] :is(button, a, summary):focus-visible {
+  outline: 2px solid var(--accent2);
+  outline-offset: 2px;
+}
+
+/* ── 文字：标题衬线、技术性标注等宽 ──────────────────────────────────── */
+body[data-preset="quantized"] :is(h1, h2) {
+  font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+body[data-preset="quantized"] .eyebrow,
+body[data-preset="quantized"] code,
+body[data-preset="quantized"] kbd,
+body[data-preset="quantized"] .metric small {
+  font-family: var(--font-mono);
+  letter-spacing: .04em;
+}
+body[data-preset="quantized"] .eyebrow {
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ── 导航/选中：用主蓝的左缘标记，替代整块填色 ────────────────────────── */
+body[data-preset="quantized"] .tabs button.is-active,
+body[data-preset="quantized"] .tabs button[aria-selected="true"] {
+  background: transparent;
+  border-color: transparent;
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+/* ── 表格：细线、无斑马纹、表头等宽小字 ──────────────────────────────── */
+body[data-preset="quantized"] table { border-collapse: collapse; }
+body[data-preset="quantized"] th {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--faint);
+  border-bottom: 1px solid var(--line);
+}
+body[data-preset="quantized"] td { border-bottom: 1px solid var(--line-soft); }
+
+/* ── 动效：只保留位移与颜色，且尊重「减少动态效果」───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body[data-preset="quantized"] :is(.card, .list-item, .metric, button, input, select, textarea) {
+    transition: none;
+  }
+  body[data-preset="quantized"] :is(.card, .list-item, .metric):hover { transform: none; }
+}

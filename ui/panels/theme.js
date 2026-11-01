@@ -86,6 +86,16 @@ export const DARK_BASE = {
   bgRotate: 0, bgZoom: 1, bgOffsetX: 0, bgOffsetY: 0,
 };
 
+/** 「量化线场」配色：纸面编辑式版面 + 墨色正文 + 克制主蓝；硬边、不用模糊阴影。 */
+export const QUANTIZED_TOKENS = {
+  bg: '#fafaf8', surface: '#ffffff', surface2: '#f4f4f0', surface3: '#ebebe6',
+  text: '#202220', muted: '#6b7068', faint: '#92978c',
+  accent: '#2152e7', accent2: '#267dff', gradient: false,
+  line: '#d9dbd5', lineSoft: '#e8e9e3',
+  good: '#2f7d52', warn: '#b26b12', bad: '#ec353e',
+  accentInk: '#ffffff',
+};
+
 /** 外观模式白名单；保留既有配置标识，配色由颜色令牌控制。 */
 export const STYLE_MODES = new Set(['endfield', 'classic', 'signal', 'flux']);
 
@@ -191,6 +201,19 @@ export function normalizePersonalization(input = {}) {
 
 /** 成型风格预设：只作为配色起点（套用后仍需"另存为"才成为自定义方案）。 */
 export const PRESETS = {
+  quantized: {
+    label: '量化线场',
+    note: '纸面编辑式 + 墨色正文 + 克制主蓝 · 出厂默认',
+    tokens: {
+      bg: '#fafaf8', surface: '#ffffff', surface2: '#f4f4f0', surface3: '#ebebe6',
+      text: '#202220', muted: '#6b7068', faint: '#92978c',
+      accent: '#2152e7', accent2: '#267dff', gradient: false,
+      line: '#d9dbd5', lineSoft: '#e8e9e3',
+      good: '#2f7d52', warn: '#b26b12', bad: '#ec353e',
+      accentInk: '#ffffff',
+      styleMode: 'classic',
+    },
+  },
   endfield: {
     label: '暖黑黄绿',
     note: '荧光黄绿 + 暖黑 · 出厂默认',
@@ -291,8 +314,10 @@ export const PRESETS = {
 
 /** 出厂默认值（预设未覆盖时的兜底）。 */
 export const DEFAULT_THEME = {
-  preset: 'dark',
+  preset: 'quantized',
   ...DARK_BASE,
+  // 出厂默认改为「量化线场」：纸面底色 + 墨色正文 + 克制主蓝，硬边、无模糊阴影。
+  ...QUANTIZED_TOKENS,
   ...PERSONALIZATION_DEFAULTS,
   // 圆角基准（px）：6 推导出 sm 4 / md 6 / lg 8。
   // 默认使用小圆角，切角主按钮另走 clip-path；尺寸由配置决定。
@@ -303,7 +328,8 @@ export const DEFAULT_THEME = {
   btnAlign: 'left', // left | center | right
   // 出厂默认外观模式；沿用既有存储标识以兼容已保存的主题。
   //            classic = 0.4 经典 | signal = 0.5 信号仪表 | flux = 实验（前卫玻璃/荧光）
-  styleMode: 'endfield',
+  // 「量化线场」走 classic：硬边小圆角，不加切角/发光等装饰。
+  styleMode: 'classic',
 };
 
 /** 参与方案的配色/背景键。 */
@@ -675,7 +701,9 @@ export function applyTheme(t) {
     body.dataset.btnAlign = theme.btnAlign;
     // 模式标识用于形状与质感；显示名称使用配色描述。
     // 未知值回落到出厂默认模式。
-    body.dataset.styleMode = STYLE_MODES.has(String(theme.styleMode)) ? String(theme.styleMode) : 'endfield';
+    body.dataset.styleMode = STYLE_MODES.has(String(theme.styleMode)) ? String(theme.styleMode) : DEFAULT_THEME.styleMode;
+    // 预设标识：样式表用 body[data-preset="…"] 挂预设专属质感（如「量化线场」）。
+    body.dataset.preset = Object.hasOwn(PRESETS, String(theme.preset)) ? String(theme.preset) : DEFAULT_THEME.preset;
     body.dataset.gradient = theme.gradient ? 'on' : 'off';
     body.dataset.bgImage = bgUrl ? 'on' : 'off';
     body.dataset.bgMedia = bgVideo?'video':bgUrl?'image':'none';

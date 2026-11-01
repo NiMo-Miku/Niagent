@@ -1,5 +1,6 @@
 /* Shared final layer for the bundled console only. Every paint value comes
    from the theme; user spacing, radii, typography and motion remain in charge. */
+@import url('./quantized-line.css');
 body[data-panel] { --content-border-width:max(1px,var(--border-width,1px)); }
 body[data-panel] > main { padding-top: max(10px,calc(var(--page-padding,16px) * .65)); }
 body[data-panel] main > .head { min-height:44px; margin-bottom:14px; padding-bottom:10px; border-color:var(--line-soft); gap:10px 20px; }
