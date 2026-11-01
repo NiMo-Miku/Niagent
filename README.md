@@ -1,10 +1,26 @@
-# QQ Agent 0.5（DSH 架构）
+# Niagent · QQ Agent 0.5
 
-QQ Agent 的 DSH 重写版（薄内核 + 全插件外壳）。行为以规格书为验收依据，当前实现和验收边界记录在下方进度文件中。
+> 薄内核 + 全插件架构的 QQ 机器人宿主，无头服务 + 浏览器 Web 控制台。
 
-## 安装与连接
+QQ Agent 0.5（代号 DSH）是 0.4 的架构重写：内核只负责会话、唤醒、记忆与调度这些不可替换的部分，模型渠道、协议端、面板、工具全部以插件形式接入。所有能力都通过 `setup(ctx)` 注册，宿主不向插件暴露 kernel、registry 或原始事件总线。
 
-本版本仍在开发和验收中。需要 Node.js 20 或更新版本，并由用户自行准备提供 OneBot v11 正向 WebSocket 事件和 HTTP API 的外部协议端。
+- 运行时：Node.js 20+
+- 形态：无头服务 + Web 控制台（不含 Electron 桌面壳）
+- 协议端：OneBot v11（NapCat / SnowLuma 等），由用户自备
+
+## 特性
+
+| 能力 | 说明 |
+|---|---|
+| 唤醒判定 | 按群/私聊档位（仅 @ / 关键词 / 随机）决定是否唤醒模型；唤醒前已有插件拦截点 |
+| 会话延续 | 同一话题在时间窗口内复用同一会话；模型可用 `finish` 带 `lurk` 主动结束话题进入静默 |
+| 记忆 | 消息存档、成员印象整理、跨会话检索；内置仿生记忆插件提供长期事实与回忆 |
+| 人设 | 全局人设 + 分会话覆盖；插件可经 `persona.read` / `persona.write` 读取与切换 |
+| 插件能力 | `ingest.intercept` 零 token 拦截、`friend.request`、`chat.member-info`、发送队列、存储、调度、钩子 |
+| 扩展创作 | 控制台内「创作扩展」生成提示词，AI 按 `docs/` 合同自行制作技能/插件 |
+| 外观 | 主题与逐元素可视化编辑，配置存于面板隔离存储 |
+
+## 快速开始
 
 ```bash
 git clone https://github.com/NiMo-Miku/Niagent.git
@@ -13,47 +29,101 @@ npm install
 npm run server
 ```
 
-启动后打开 `http://127.0.0.1:3210` 即为 Web 控制台；Windows 也可直接双击 [`启动QQ机器人.bat`](启动QQ机器人.bat)（自动装依赖、按顶部配置的端口启动服务，不自动打开浏览器）。首次启动会自动生成随机控制台令牌并写入 config.json：浏览器打开控制台会自动领取令牌，脚本/程序调用 API 需携带该令牌（`x-console-token` 头；显式把 `server.token` 写成空字符串可关闭鉴权）。本项目只提供无头服务与浏览器控制台，不包含桌面应用。
+启动后打开 `http://127.0.0.1:3210`（端口可在 `data/config.json` 的 `server.port` 修改）。Windows 也可双击 `启动QQ机器人.bat`。
 
-可自行从上游 Releases 下载 [NapCat 完整 Node 包](https://github.com/NapNeko/NapCatQQ/releases) 或 [SnowLuma 完整包](https://github.com/SnowLuma/SnowLuma/releases)，将 ZIP 或完整解压目录放进项目根目录的 [`protocols/`](protocols/README.md)，再到「设置 → QQ 连接」点击“启动并连接”。QQ-Agent 自动检测发行物、解压 ZIP、备份并补齐 OneBot 配置；登录、首次协议确认及客户端接入由你在上游自己的页面完成。只有显式启用“随 QQ-Agent 启动”才会自动启动所选包。
+首次启动会自动生成随机控制台令牌并写入 `data/config.json`，浏览器打开控制台会自动领取；脚本调用 API 需带 `x-console-token` 头。把 `server.token` 显式写成空字符串可关闭鉴权——仅建议在本机可信环境这么做。
 
-已有自行运行的 OneBot 服务也可继续手动填写 WebSocket 地址、HTTP API 地址和两种访问令牌：`onebot.wsUrl`、`onebot.httpUrl`、`onebot.accessToken`、`onebot.httpAccessToken`。使用条件、许可和客户端版本要求请查阅上游说明。
+## 连接 QQ
 
-升级前备份配置和数据，升级后重新填写 OneBot 连接配置。旧版专属运行时配置不自动迁移，已有第三方程序和账号数据不会由本次改动删除。连接后应在测试会话验证所需的收发与媒体行为；自动测试和连接状态不代表真实 QQ 联调已完成。
+推荐：把上游协议端完整包放进项目根目录的 `protocols/`，控制台「设置 → QQ 连接」里选择「启动并连接」，宿主会检测发行物、解压、补齐 OneBot 配置并管理自己启动的进程树。
 
-## 事实来源
+- [NapCat Releases](https://github.com/NapNeko/NapCatQQ/releases)
+- [SnowLuma Releases](https://github.com/SnowLuma/SnowLuma/releases)
 
-> 2026-10-31 注：本仓库（Niagent）不再附带 `../dsh-spec/` 行为规格书与 `../develop/` 0.4 参考源码——两者留在原作者工作区，未随仓库分发。下文对它们的引用仅作历史出处标注，当前无法在本仓库内复核；可复核的事实源是仓库内的规格文档与验收回归证据。
+也可以连接你自己已经跑起来的 OneBot v11 服务，在设置里填写 `onebot.wsUrl`、`onebot.httpUrl`、`onebot.accessToken`、`onebot.httpAccessToken`。QQ 登录、首次协议确认由协议端自己的页面完成，本仓库不接管登录态。
 
-- 追加式组合规格（架构主合同）：[默认实现与追加式组合 v2.1](docs/architecture-composition.md)
-- 行为规格出处（历史，**不在本仓库**）：`dsh-spec/SPEC.md`（§1–§18，F-001~F-223 + §5/§8/§9 三段式契约）、`DSH-ARCH.md`；task_plan/findings 中的规格编号引用以此为准
-- 当前进度：`progress.md`
-- 有头验收：`docs/headed-qa-checklist.md`、`docs/headed-qa-results.md`
-- 回归证据：`docs/headed-qa-regression-evidence.md`
-- 追加式组合验收：[实现与回归证据](docs/composition-regression-evidence.md)，[可复制示例](examples/composition/README.md)。
-- 部分重叠贡献：[逐目标替换、方法包装与多层撤销验收](docs/composition-overlap-evidence.md)。
-- 决策记录出处（历史，**不在本仓库**）：`dsh-spec/NEXT-SESSION.md` §3（D-1~D-7）
+## 插件与技能
 
-## 外观自定义
+内置在 `bundled/`、`plugins/`、`skills/` 下，控制台列表里启用即可。启用用户插件时会弹授权卡，按需允许 `qq.send`、`ui.panel`、`persona.read/write` 等能力。
 
-界面外观支持在「设置 → 外观 → 点选编辑」中直接调整实际页面，可按单个元素、当前页面或同类组件设置，并自动保存。操作方式见[外观点选编辑](docs/appearance-visual-editor.md)。
+| 扩展 | 位置 | 说明 |
+|---|---|---|
+| 好友申请审批 | `plugins/friend-approval`（本仓库） | 按审批人列表自动或人工处理好友申请 |
+| 文生图 | `skills/image-generate`（本仓库） | 调用已配置的模型渠道生成图片 |
+| TRPG 跑团骰子 | 独立仓库 [na-trpg-dice](https://github.com/NiMo-Miku/na-trpg-dice)，放进 `plugins/trpg-dice` | `.r`/`.ra`/`.st`/`.pc` 等指令在唤醒前直接计算发送，零模型零 token；支持跑团人设切换、自定义回复模板与后缀 |
+| 仿生记忆 | 独立分发，放进 `plugins/biomimetic-memory` | 事实/偏好/经历整理、相关回忆注入、冲突处理与备份 |
+| 真 @ 提醒 | 独立分发，放进 `skills/real-at` | 发送真正的 at 消息段，而不是正文里的「@昵称」文字 |
 
-## 依靠 AI 添加功能
+`plugins/` 与 `skills/` 是用户扩展目录，不随本仓库分发；克隆后按需放入。插件更新会改变代码指纹，之前的授权随之失效，更新后需在插件卡片上重新「宿主授权」。
 
-在技能、插件或社区页打开“创作扩展”，直接复制提示词；也可从[文档版提示词](docs/ai-extension-prompt.md)开始。AI 会先用日常话问清并确认需求，再自行读取[开发文档](docs/extension-authoring.md)、判断做成技能还是插件，完成制作、自检并放入对应文件夹。新功能默认禁用，由你在列表中点击启用；无需选择技术类型或自己运行命令，不会自动上传社区。需要 ZIP 时可另行打包。
+## 开发扩展
 
-开发者可查[完整参考](docs/extension-reference.md)，直接复用[完整范例](examples/extensions/README.md)。提供自检、离线执行和社区同格式打包工具：`npm run extension:check -- <目录>`、`npm run extension:test -- <目录> --case <用例文件>`、`npm run extension:pack -- <目录> --out <ZIP路径>`。
+```bash
+npm run extension:check -- <目录>   # 静态自检
+npm run extension:test  -- <目录> --case <用例文件>
+npm run extension:pack  -- <目录> --out <ZIP路径>
+```
 
-0.4 扩展迁移先查[逐项能力对照](docs/v04-extension-parity.md)，不要混用旧日志函数、执行参数顺序或 sender。自检、真实 QQ 联调与生产社区发布分别报告结果；本轮过程见[AI 创作验收](docs/ai-extension-validation.md)。
+- 入门与完整合同：[扩展创作](docs/extension-authoring.md)、[完整参考](docs/extension-reference.md)
+- SDK 概览：[插件 SDK](docs/plugin-sdk.md)
+- 追加式组合（替换默认实现）：[组合规格](docs/architecture-composition.md)
+- 从 0.4 迁移：[能力逐项对照](docs/v04-extension-parity.md)
+- 可执行范例：`examples/extensions/`
 
-## 工作约定
+插件通过 `setup(ctx)` 使用 `ctx.registerTool` / `registerCapability` / `registerTransport` / `ui.panel.register`，以及 `ctx.hooks.on`（`before-context`、`before-llm-messages`、`after-response`、`before-tool`、`after-tool`）、`ctx.scheduler`、`ctx.storage`、`ctx.config`。
 
-1. 用户已授权参考 `../develop/` 的公开源码补齐功能；该目录的私有配置、账号、凭据和日志不属于参考范围。
-2. 用户已授权同步修订插件化架构规格。修复应附相关验证，区分产品缺陷、未完成的实测和外部条件不足。
-3. 本地测试使用独立合成副本；不得将安装校验、模拟接口或自动测试当作真实账号联调通过。
-4. 2026-10-31 起移除 Electron 桌面外壳与 NSIS 安装包：产品形态收敛为无头服务 + 浏览器 Web 控制台；协议端 QQ 登录（扫码/免扫码）保留，登录动作由上游协议端页面完成。
+## 配置与安全
 
-## 状态
+- 配置：`data/config.json`（原子写、损坏自动备份）。模型渠道、权限、档位、记忆策略等都在此文件与控制台里。
+- 密钥：`data/` 已被 `.gitignore` 排除，不要提交；控制台 API 返回配置时会对密钥脱敏，只给 `hasXxx` 标记。
+- 插件权限：声明在 `plugin.json` 的 `permissions`，按代码指纹绑定，每次请求校验。
+- 插件在 Node 进程内执行，不是沙箱；只安装可信代码。
 
-- 已实现插件宿主、无头内核与 Web 控制台，正在继续修复和本地验收。最新完整回归、实际操作记录和剩余条件以 `progress.md` 及上述验收文件为准。
-- 支持检测和启动用户自行放入的两种完整协议端发行包，管理自己启动的进程树；不会分发第三方运行时、接管已运行的外部进程或迁移 QQ 登录态。真实 QQ 登录与收发联调仍须使用用户自己的账号完成。
+## 数据目录
+
+```
+data/
+  config.json                  配置
+  messages/                    消息存档
+  memory/                      记忆与成员印象
+  sessions/                    会话与用量
+  plugin-storage/              插件自己的持久化目录
+  plugin-authorizations.json   插件授权记录
+  logs/                        日志
+```
+
+升级前建议整体备份 `data/`。
+
+## 测试
+
+```bash
+npm test          # 主回归
+npm run test:m4   # M4
+npm run smoke     # 无头冒烟
+```
+
+测试使用隔离的合成副本和假传输，不连接真实 QQ；自动测试通过不代表真实账号联调完成。涉及浏览器的用例需要本机 Chromium。
+
+## 目录结构
+
+```
+src/kernel/      内核：会话、唤醒、编排、能力注册、SDK 边界
+src/console/     控制台 HTTP 路由与面板适配
+bundled/         随仓库分发的默认插件/技能（可在组合层替换）
+plugins/         用户插件
+skills/          用户技能
+ui/              控制台外壳、内置面板与设计系统
+protocols/       协议端发行包存放处（不入库）
+docs/            架构、SDK、扩展开发参考
+test/            回归与端到端用例
+```
+
+## 许可证
+
+内核与主体代码为 MIT（见 `package.json`）。各插件许可证见其自身 `plugin.json`；`plugins/trpg-dice` 为 AGPL-3.0（移植自 OlivaDiceCore）。
+
+## 已知边界
+
+- 只提供无头服务与 Web 控制台；桌面外壳、安装包、QQ 扫码登录均不在本仓库范围内。
+- 不迁移 0.4 的账号数据与专属运行时配置；升级前请自行备份。
+- 协议端版本、许可与联调条件以上游说明为准；连接状态不等于真实收发已验证。

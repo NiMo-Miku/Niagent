@@ -1,4 +1,4 @@
-// 312 · 好友申请链路（本体开发移交引索.md 任务三,宿主侧）：
+// 312 · 好友申请链路（开发任务三,宿主侧）：
 // ① provider 解析 request_type==='friend' → 归一化 friend_request 事件（群申请不受影响）
 // ② transport actions.setFriendAddRequest({flag,approve}) 原样回传 flag
 // ③ core.events 把 friend_request 确定性分发给 friend.request 能力（claimAsync,无人认领=留待人工）

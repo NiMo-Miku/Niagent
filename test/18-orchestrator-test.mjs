@@ -227,7 +227,7 @@ const w11 = e11.orch.status().waiting.find((x) => x.chatKey === 'group:100');
 ok(w11 && w11.sessionId !== first11.id, '窗口关闭 → 新会话');
 e11.orch.stop();
 
-// ---- 唤醒前输入拦截（本体开发移交引索.md 任务二,2026-10-31）----
+// ---- 唤醒前输入拦截（开发任务二,2026-10-31）----
 // core.events(business.js handleProviderEvent) 在入库后、onIncoming 前咨询
 // ingest.intercept 提供者:认领→已读沉历史不排唤醒;不认领/异常/超时→放行;
 // 暂停→不调用;提供者停用/换代→活性探针失效不咨询。

@@ -1,4 +1,4 @@
-// 313 · friend-approval 0.5 端到端（本体开发移交引索.md 任务三验收）：
+// 313 · friend-approval 0.5 端到端（开发任务三验收）：
 // 真 WS/HTTP mock OneBot + 真内核 + 真插件——
 // 好友申请 → 私聊请示审批人 → 审批人私聊「同意」→ set_friend_add_request(flag,approve)
 // → 预批准名单（admin_add_friend）→ 后续申请自动通过；chat.member-info 三种角色查询。

@@ -1,4 +1,4 @@
-// 311 · ingest.intercept 端到端（本体开发移交引索.md 任务二验收）：
+// 311 · ingest.intercept 端到端（开发任务二验收）：
 // 真实 trpg-dice 插件 + 真实内核（createApplication）+ 档位 1 群——
 // .bot on / .r 1d100 被唤醒前拦截并零模型直发；普通消息不认领 → 原档位判定路径不变。
 import assert from 'node:assert/strict';

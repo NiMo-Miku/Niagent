@@ -113,7 +113,7 @@ export function createOneBotProvider({ cfg, log = console, onEvent, onStatus, to
       }
     }
     if(postType==='request'&&raw.request_type==='group'&&raw.sub_type==='add')eventSink?.({kind:'group',id:String(raw.group_id??''),type:'join_request',event:raw});
-    // 好友申请（本体开发移交引索.md 任务三，2026-10-31）：OneBot flag 是不透明串，原样透传不落中间态。
+    // 好友申请（开发任务三，2026-10-31）：OneBot flag 是不透明串，原样透传不落中间态。
     if(postType==='request'&&raw.request_type==='friend')eventSink?.({kind:'friend',id:String(raw.user_id??''),type:'friend_request',event:raw});
   }
 

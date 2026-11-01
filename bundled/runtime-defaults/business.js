@@ -49,7 +49,7 @@ export async function forwardLinkedMedia(chatKey, entry, { runtimeState, capabil
   return { claimed: true, sent: true, ownerId: result.ownerId, sentCount: sent?.sent?.length ?? 0 };
 }
 
-// 唤醒判定之前的最后一段插件拦截点（本体开发移交引索.md 任务二，2026-10-31）：
+// 唤醒判定之前的最后一段插件拦截点（开发任务二，2026-10-31）：
 // `ingest.intercept` 提供者在消息入库后、onIncoming 前被咨询。合同：
 // 认领（返回真值）→ 宿主标已读沉历史、不排唤醒不建会话；不认领/提供者异常/整体超时
 // → 按不认领放行，三档判定照旧（绝不能连累正常对话）；全局暂停时不调用（暂停优先）。

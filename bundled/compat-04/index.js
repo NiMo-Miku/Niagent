@@ -1,5 +1,5 @@
 // 0.4 createSkillApi 兼容垫片：把旧插件 API 映射到窄的 0.5 ctx，不暴露内核对象。
-// 权限映射（2026-10-04，docs/gap-closure-design.md §二）：
+// 权限映射（2026-10-04，权限映射设计 §二）：
 //   web_fetch → net.outbound（本文件 fetch 路径）；scheduler / fs.namespace → 0.5 user 域默认 allow，无需动作；
 //   proc.exec / net.raw / mcp.connect → 永不映射（deny 类或白名单外，安全基线优先）。
 //   清单 legacyTrusted 不参与授权。宿主权限决定保存到独立文件，绑定插件指纹，
