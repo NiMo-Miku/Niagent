@@ -214,6 +214,14 @@ export function createOrchestrator({
       scheduleWake(chatKey, null, { verified: false, proactive: false });
       return;
     }
+    // 插件强制唤醒（ingest.intercept 返回 wake:true）：绕过三档判定直接唤醒。
+    // 仍受指令禁言约束——被禁言的会话回落普通判定（禁言档位通常 1，继续沉默）。
+    if (entry._forceWake === true && !isChatQuiet(cfg().commandMute, chatKey, now())) {
+      entry._tier = 4;
+      entry._reason = '跑团模式';
+      scheduleWake(chatKey, null, { verified: true });
+      return;
+    }
     const isPrivate = chatKey.startsWith('private:');
     const c = storeConfigForChat(chatKey, isPrivate);
     const verdict = resolveWake({ entry, cfg: c, isPrivate, roll: null });

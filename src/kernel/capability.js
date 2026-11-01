@@ -134,7 +134,9 @@ export function createCapabilityRegistry({ log = console, isOwnerActive = () => 
         const result = await (typeof provider === 'function' ? provider(...args) : provider);
         if (signal?.aborted) return null;
         if (!current(candidate)) continue;
-        if (result !== null && result !== undefined && result?.status !== 'skip') return { ownerId, result };
+        // false = 明确的"未认领/跳过"：不许把 {ownerId, result:false} 当成认领成功
+        // （对象恒为真值，曾让 ingest.intercept 的"不认领"永远不生效——普通消息被吞）。
+        if (result !== null && result !== undefined && result !== false && result?.status !== 'skip') return { ownerId, result };
       } catch (err) {
         log.error?.(`capability "${name}" 提供者 ${ownerId} 抛错：${err?.stack || err}`);
       }
