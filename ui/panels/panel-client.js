@@ -2,6 +2,9 @@ import {setRefreshInterval} from './refresh-policy.js';
 import {panelApiRequestTimeout} from './request-timeouts.js';
 import {resetDestructiveActions} from './destructive-action.js';
 import {createVisualPicker} from './visual-picker.js';
+// 主题引擎按「shell 与所有面板共享」设计：由这里引入后，面板才会消费下方
+// 分发的 qq-theme 事件、写 CSS 变量与 body[data-preset]（否则面板一直停在出厂默认）。
+import './theme.js';
 
 let nonce='',panel='',sequence=0,leaving=false,leaveId=null,initialViewState={},settingsSave=false,contentAnnounced=false;
 const waiters=new Map(),events=new Set(),beforeLeaveHandlers=new Set(),leaveHandlers=new Set(),stateProviders=new Map();

@@ -1,0 +1,207 @@
+/* ── 魔法阵（Magic Circle）──────────────────────────────────────────────────
+   深靛底 + 金色辉光 + 冷靛蓝点缀；同心环、符文描边、圣几何底纹。
+   规则全部挂在 html body[data-preset="magic-circle"] 下：
+     多出的 html 让这些规则稳定压过 common.css / visual-refinements.css 里的
+     通用面板规则（两者优先级同为 body[data-panel] …，靠顺序取胜并不可靠）。
+
+   约束（照 Magic Circle 规范执行）：
+     · 只用暖金 #fbbf24 / 冷靛 #818cf8 / 银白 #e2e8f0 / 深靛 #1e1b4b / 夜底 #0a0920
+     · 边界一律 1px，圆角只用 2px；禁止大圆角、白底、粗边框、柔和投影
+     · 层次用「金色辉光」而不是 drop shadow
+     · 悬停时环形装饰旋转（3000ms 线性），按下时内发光 + scale(.95)
+     · 焦点环 2px 金色 50%，且有 2px offset（深底上必须分离）
+     · prefers-reduced-motion 下全部静止。 */
+
+html body[data-preset="magic-circle"] {
+  --hover-lift: 0px;
+  --press-scale: .95;
+  --shadow-lift: none;
+  --bevel: none;
+  --press: none;
+  --focus-width: 2px;
+  --hover-surface: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --selected-surface: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --hover-soft: color-mix(in srgb, var(--accent) 8%, transparent);
+  --magic-gold: #fbbf24;
+  --magic-indigo: #818cf8;
+  --magic-ring-duration: 3000ms;
+}
+
+/* ── 底纹：圣几何同心环 + 中心金辉（只画在 shell，面板保持透明）────────── */
+html body[data-preset="magic-circle"]:not([data-panel]):not([data-bg-image="on"]) {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 50% -18%, rgb(251 191 36 / .12), transparent 58%),
+    radial-gradient(circle at 50% 50%, transparent 0 20%, rgb(251 191 36 / .055) 20% 20.25%, transparent 20.25% 34%, rgb(251 191 36 / .045) 34% 34.2%, transparent 34.2% 47%, rgb(251 191 36 / .032) 47% 47.15%, transparent 47.15% 60%, rgb(129 140 248 / .035) 60% 60.15%, transparent 60.15%),
+    repeating-radial-gradient(circle at 50% 50%, rgb(129 140 248 / .05) 0 1px, transparent 1px 72px);
+  background-attachment: fixed;
+}
+
+/* ── 卡片：深底 + 1px 金边 + 辉光；同心环随悬停旋转，上下沿有符文虚线 ── */
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric) {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgb(251 191 36 / .12);
+  transition: transform 500ms ease-in-out, box-shadow 500ms ease-in-out, border-color 500ms ease-in-out;
+}
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric):hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: 0 0 30px rgb(251 191 36 / .3);
+}
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric).selected,
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric).is-active {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--selected-surface);
+  box-shadow: 0 0 26px rgb(251 191 36 / .26);
+}
+
+/* 同心环：两圈细环 + 放射状符文刻度；旋转时可见。 */
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: .5;
+  background: repeating-conic-gradient(from 0deg, rgb(251 191 36 / .3) 0 .7deg, transparent .7deg 9deg);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 0 36%, #000 36% 37%, transparent 37% 56%, #000 56% 56.6%, transparent 56.6%);
+          mask: radial-gradient(circle at 50% 50%, transparent 0 36%, #000 36% 37%, transparent 37% 56%, #000 56% 56.6%, transparent 56.6%);
+  transition: transform var(--magic-ring-duration) linear, opacity 500ms ease-in-out;
+}
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric):hover::before {
+  transform: rotate(180deg);
+  opacity: .85;
+}
+
+/* 符文描边：上下沿的点划线，替代原来的角标。 */
+html body[data-preset="magic-circle"] :is(.card, .list-item, .metric)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, rgb(251 191 36 / .5) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(90deg, rgb(251 191 36 / .5) 0 2px, transparent 2px 9px);
+  background-size: 100% 1px, 100% 1px;
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 按钮：衬线 + 描边 + 金色辉光；按下内爆 ──────────────────────────── */
+html body[data-preset="magic-circle"] button {
+  font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+  font-weight: 600;
+  letter-spacing: .04em;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--accent);
+  box-shadow: 0 0 20px rgb(251 191 36 / .18);
+  transition: transform 500ms ease-in-out, box-shadow 500ms ease-in-out, background-color 500ms ease-in-out, border-color 500ms ease-in-out, color 500ms ease-in-out;
+}
+html body[data-preset="magic-circle"] button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 30px rgb(251 191 36 / .38);
+}
+html body[data-preset="magic-circle"] button:active:not(:disabled) {
+  transform: scale(.95);
+  box-shadow: inset 0 0 30px rgb(251 191 36 / .55);
+}
+html body[data-preset="magic-circle"] button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 24px rgb(251 191 36 / .35);
+}
+html body[data-preset="magic-circle"] button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+  border-color: color-mix(in srgb, var(--accent) 88%, var(--text));
+  box-shadow: 0 0 34px rgb(251 191 36 / .5);
+}
+html body[data-preset="magic-circle"] button.primary:active:not(:disabled) {
+  box-shadow: inset 0 0 30px rgb(10 9 32 / .55);
+}
+html body[data-preset="magic-circle"] button.danger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  color: var(--bad);
+  box-shadow: 0 0 18px rgb(232 145 143 / .16);
+}
+html body[data-preset="magic-circle"] button.danger:hover:not(:disabled) {
+  border-color: var(--bad);
+  box-shadow: 0 0 26px rgb(232 145 143 / .3);
+}
+html body[data-preset="magic-circle"] button.ghost {
+  background: var(--bg);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent2) 30%, transparent);
+  box-shadow: 0 0 15px rgb(129 140 248 / .18);
+}
+
+/* 焦点：金色 50% 环 + 2px offset（深底上必须分离）。 */
+html body[data-preset="magic-circle"] :is(button, a, summary, input, select, textarea):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: 2px;
+}
+
+/* ── 输入框：夜底 + 金边；聚焦时金边加辉光 ─────────────────────────── */
+html body[data-preset="magic-circle"] :is(input, select, textarea) {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+}
+html body[data-preset="magic-circle"] :is(input, select, textarea):focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 20px rgb(251 191 36 / .25);
+}
+
+/* ── 文字：标题衬线加宽字距；技术标注等宽 ───────────────────────────── */
+html body[data-preset="magic-circle"] :is(h1, h2, h3, .card h3) {
+  font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+html body[data-preset="magic-circle"] :is(.eyebrow, code, kbd, th) {
+  font-family: var(--font-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+}
+
+/* ── 选中态：金色下划线，不整块填色 ─────────────────────────────────── */
+html body[data-preset="magic-circle"] .tabs button.is-active,
+html body[data-preset="magic-circle"] .tabs button[aria-selected="true"] {
+  background: transparent;
+  border-color: transparent;
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 6px 18px -12px rgb(251 191 36 / .8);
+}
+
+/* ── 表头：金色细线 ─────────────────────────────────────────────────── */
+html body[data-preset="magic-circle"] th { border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
+html body[data-preset="magic-circle"] td { border-bottom: 1px solid var(--line-soft); }
+
+/* ── 减少动态效果：停掉旋转、位移与缩放 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html body[data-preset="magic-circle"] :is(.card, .list-item, .metric, button, input, select, textarea) {
+    transition: none;
+  }
+  html body[data-preset="magic-circle"] :is(.card, .list-item, .metric):hover,
+  html body[data-preset="magic-circle"] button:hover:not(:disabled),
+  html body[data-preset="magic-circle"] button:active:not(:disabled) {
+    transform: none;
+  }
+  html body[data-preset="magic-circle"] :is(.card, .list-item, .metric):hover::before {
+    transform: none;
+  }
+}

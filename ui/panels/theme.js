@@ -201,6 +201,19 @@ export function normalizePersonalization(input = {}) {
 
 /** 成型风格预设：只作为配色起点（套用后仍需"另存为"才成为自定义方案）。 */
 export const PRESETS = {
+  'magic-circle': {
+    label: '魔法阵',
+    note: '深靛底 + 金色辉光 · 同心环、符文与圣几何',
+    tokens: {
+      bg: '#0a0920', surface: '#12102e', surface2: '#1e1b4b', surface3: '#262154',
+      text: '#e2e8f0', muted: '#b6bcd8', faint: '#8a8fb5',
+      accent: '#fbbf24', accent2: '#818cf8', gradient: false,
+      line: '#fbbf2426', lineSoft: '#fbbf2414',
+      good: '#93c9a8', warn: '#fbbf24', bad: '#e8918f',
+      accentInk: '#0a0920',
+      styleMode: 'classic',
+    },
+  },
   quantized: {
     label: '量化线场',
     note: '纸面编辑式 + 墨色正文 + 克制主蓝 · 出厂默认',
