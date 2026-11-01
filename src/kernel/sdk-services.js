@@ -83,7 +83,7 @@ const METHODS = {
   'memory.consolidate': ['consolidate'],
   'extensions.state': ['isActive', 'isEnabled', 'videoFrames'], 'extensions.installZip': ['install'], 'tools.catalog': ['list'],
   'runtime.reminders': ['start', 'stop'],
-  'persona.write': ['write', 'select'], 'persona.read': ['read', 'resolve'],
+  'persona.write': ['write', 'select'], 'persona.read': ['read', 'resolve', 'list'],
   'chat.member-info': ['member'],
 };
 const WRITE_METHODS = new Set(['append', 'remove', 'updateByMid', 'markConsolidated', 'replaceMember', 'removeMember', 'clearChat', 'create', 'update', 'finish', 'add', 'markFired', 'cancel', 'updatePendingTexts', 'prune', 'note', 'markUsed', 'collect', 'mergeFromQQ']);

@@ -360,6 +360,14 @@
         {
           "method": "POST",
           "path": "/api/extensions/:id/update"
+        },
+        {
+          "method": "GET",
+          "path": "/api/debug/prompt/sections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/debug/prompt/full"
         }
       ]
     },
@@ -436,6 +444,14 @@
         {
           "method": "POST",
           "path": "/api/extensions/:id/update"
+        },
+        {
+          "method": "GET",
+          "path": "/api/debug/prompt/sections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/debug/prompt/full"
         }
       ]
     },
@@ -811,6 +827,14 @@
         {
           "method": "GET",
           "path": "/api/ui/fonts/refresh"
+        },
+        {
+          "method": "GET",
+          "path": "/api/debug/prompt/sections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/debug/prompt/full"
         }
       ]
     }

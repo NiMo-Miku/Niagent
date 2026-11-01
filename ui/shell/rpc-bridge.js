@@ -22,7 +22,7 @@ function routePattern(path) {
 /** Opaque-origin iframes require targetOrigin="*"; source + panel id + one-time nonce authenticate every message. */
 export class RpcBridge {
   constructor({frame,api,controlApi=api,manifest,timeout=15000,onUserCall=async()=>{throw new Error('当前运行环境未提供该能力');},onUserConfig=async()=>({}),onNotify=()=>{},onUserSetConfig=null,onReady=null,onTheme=null,onOpenExternal=null,onPublishQuote=null,onManageConsoleToken=null,onUpdateAction=null,onDestructiveProgress=null,viewState=null,onAccountStopped=id=>{if(id===currentAccountScope.id&&id!=='primary')window.location.assign(accountNavigationUrl('primary',manifest?.id));}}={}) {
-    this.frame=frame; this.api=api; this.controlApi=controlApi;this.onAccountStopped=onAccountStopped;this.manifest=manifest??{}; this.timeout=timeout; this.onUserCall=onUserCall; this.onUserConfig=onUserConfig; this.onNotify=onNotify; this.onReady=onReady; this.onTheme=onTheme; this.onOpenExternal=onOpenExternal;this.onPublishQuote=onPublishQuote;this.quoteController=null;
+    this.frame=frame; this.api=api; this.controlApi=controlApi;this.onAccountStopped=onAccountStopped;this.manifest=manifest??{}; this.timeout=timeout; this.onUserCall=onUserCall; this.onUserConfig=onUserConfig; this.onUserSetConfig=onUserSetConfig; this.onNotify=onNotify; this.onReady=onReady; this.onTheme=onTheme; this.onOpenExternal=onOpenExternal;this.onPublishQuote=onPublishQuote;this.quoteController=null;
     this.onManageConsoleToken=onManageConsoleToken;this.onUpdateAction=onUpdateAction;
     this.onDestructiveProgress=onDestructiveProgress;this.destructiveProgressActive=false;this.leaving=false;
     this.protocolLoginSession=null;this.protocolLoginReleased=new Set();

@@ -1,4 +1,4 @@
-// 插件侧人格写入事务与只读摘要（本体开发移交引索.md 任务一，2026-10-31）。
+// 插件侧人格写入事务与只读摘要（开发任务一，2026-10-31）。
 // 与控制台 persona-by-chat 同一套磁盘语义：会话级映射只能经 personaByChat __replace__
 // 读改写（deepMerge 传缺键对象删不掉键）；白名单外字段一律 403，超长 400，空串=清除。
 // 生效性不在此处裁决：会话级覆盖仍由 personaForChat 的 personaUnified 门决定，
@@ -140,5 +140,10 @@ export function createPersonaWriter({ config, log = console, bus = null, templat
     return fieldInfoOf(personaForChat(config.get(), chatKey));
   }
 
-  return Object.freeze({ write, select, read, resolve });
+  // 人设库枚举：供插件配置页渲染下拉选择项（只读，不含正文）。
+  function list() {
+    return templates().map((t) => ({ id: t.id, name: t.name ?? t.id }));
+  }
+
+  return Object.freeze({ write, select, read, resolve, list });
 }

@@ -188,7 +188,7 @@ export function createKernel({
       write(input = {}) { return personaWriter.write(input, sdk.consumerIdentity()); },
       select(input = {}) { return personaWriter.select(input, sdk.consumerIdentity()); },
     }),
-    'persona.read': Object.freeze({ read: () => personaWriter.read(), resolve: (chatKey) => personaWriter.resolve(chatKey) }),
+    'persona.read': Object.freeze({ read: () => personaWriter.read(), resolve: (chatKey) => personaWriter.resolve(chatKey), list: () => personaWriter.list() }),
     // 任务三（2026-10-31）：群成员身份查询——内部复用 moderation.member（get_group_member_info）。
     // 入参兼容 chatKey（group:数字/private:数字 取末段）与裸群号。
     'chat.member-info': Object.freeze({ member: (chatKeyOrGroup, ...rest) => {
