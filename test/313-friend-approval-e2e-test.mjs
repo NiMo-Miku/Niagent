@@ -12,6 +12,11 @@ import { createApplication } from '../src/kernel/composition.js';
 import { defaultComponents } from '../bundled/runtime-defaults/components.js';
 
 const workspace = path.resolve(import.meta.dirname, '..');
+// friend-approval 随插件仓库分发，不随本体入库；没装就跳过，而不是报失败。
+if (!fs.existsSync(path.join(workspace, 'plugins', 'friend-approval', 'plugin.json'))) {
+  console.log('SKIP 313-friend-approval-e2e：本机未安装 plugins/friend-approval');
+  process.exit(0);
+}
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'qqa-friend-approval-313-'));
 const dataDir = path.join(temporary, 'data'), appRoot = path.join(temporary, 'app');
 fs.mkdirSync(appRoot);

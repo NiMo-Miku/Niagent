@@ -11,6 +11,11 @@ import { createApplication } from '../src/kernel/composition.js';
 import { defaultComponents } from '../bundled/runtime-defaults/components.js';
 
 const workspace = path.resolve(import.meta.dirname, '..');
+// trpg-dice 随插件仓库分发，不随本体入库；没装就跳过。
+if (!fs.existsSync(path.join(workspace, 'plugins', 'trpg-dice', 'plugin.json'))) {
+  console.log('SKIP 312-trpg-persona-dropdown-ui：本机未安装 plugins/trpg-dice');
+  process.exit(0);
+}
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'qqa-persona-ui-312-'));
 const dataDir = path.join(temporary, 'data'), appRoot = path.join(temporary, 'app');
 fs.mkdirSync(appRoot);

@@ -10,6 +10,11 @@ import { defaultComponents } from '../bundled/runtime-defaults/components.js';
 
 const workspace = path.resolve(import.meta.dirname, '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'qqa-ingest-intercept-311-'));
+// trpg-dice 随插件仓库分发，不随本体入库；没装就跳过。
+if (!fs.existsSync(path.join(workspace, 'plugins', 'trpg-dice', 'plugin.json'))) {
+  console.log('SKIP 311-trpg-dice-ingest-intercept：本机未安装 plugins/trpg-dice');
+  process.exit(0);
+}
 const dataDir = path.join(temporary, 'data'), appRoot = path.join(temporary, 'app');
 fs.mkdirSync(appRoot);
 fs.cpSync(path.join(workspace, 'ui'), path.join(appRoot, 'ui'), { recursive: true });
