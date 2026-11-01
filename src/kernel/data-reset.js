@@ -15,7 +15,7 @@ const failure = (message, status = 500) => Object.assign(new Error(message), { e
 export function assertResettableDataDir(dataDir, { existsSync = fs.existsSync, resolve = path.resolve, parse = path.parse, basename = path.basename, join = path.join } = {}) {
   const resolved = resolve(dataDir ?? '');
   if (resolved === parse(resolved).root || (!basename(resolved).toLowerCase().startsWith('data') && !existsSync(join(resolved, 'config.json')))) {
-    throw failure(`数据目录不像 QQ Agent 数据目录，已拒绝重置：${resolved}`, 400);
+    throw failure(`数据目录不像 Ni·QQagent 数据目录，已拒绝重置：${resolved}`, 400);
   }
   return resolved;
 }

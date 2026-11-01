@@ -24,7 +24,7 @@ if not exist "%ROOT%node_modules\ws\" (
 )
 chcp 65001 >nul
 echo ==============================================
-echo  QQ Agent starting...
+echo  Ni·QQagent starting...
 echo  Open in your browser: http://127.0.0.1:%PORT%
 echo  (Port is configurable at the top of this file.)
 echo ==============================================

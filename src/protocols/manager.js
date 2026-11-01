@@ -122,7 +122,7 @@ export function createLocalProtocols({appRoot,dataDir,config,bus,log=console,env
   function retainUncertainTree(record,detail=''){
     record.treePending=true;record.orphaned=true;
     try{record.updatePackage?.(record.child?.pid??null,true);}catch{log.warn?.('[protocols] 无法保留异常退出的进程标记，请检查包目录');}
-    record.status='error';record.error=`协议端启动器已退出${detail}，无法确认工作进程已停止。请查看启动输出，确认并关闭遗留进程后，移开包内的 .qq-agent-runtime.lock，再重启 QQ-Agent`;
+    record.status='error';record.error=`协议端启动器已退出${detail}，无法确认工作进程已停止。请查看启动输出，确认并关闭遗留进程后，移开包内的 .qq-agent-runtime.lock，再重启 Ni·QQagent`;
     if(runtime===record){configWatcher?.close();configWatcher=null;notify();}
   }
   async function launch(id,account,options={}){

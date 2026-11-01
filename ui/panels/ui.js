@@ -33,7 +33,7 @@ export async function managePermissions(plugin){
   const path=`/api/plugins/${encodeURIComponent(plugin.id)}/permissions`;
   const data=await request('GET',path);
   const dialog=document.createElement('dialog'),title=document.createElement('h3'),warning=document.createElement('p'),identity=document.createElement('small'),content=document.createElement('section');
-  title.textContent=`${plugin.name||plugin.id} · 宿主授权`;warning.textContent='这个扩展会直接在你的电脑上运行，可能读取文件或连接网络。这里的开关只管理它通过 QQ Agent 申请的权限，不能限制它的全部行为。请只启用来源可靠、你愿意信任的扩展。';identity.textContent=`当前代码版本标识 ${data.fingerprint.slice(0,16)}…（扩展更新后，需要重新确认权限）`;
+  title.textContent=`${plugin.name||plugin.id} · 宿主授权`;warning.textContent='这个扩展会直接在你的电脑上运行，可能读取文件或连接网络。这里的开关只管理它通过 Ni·QQagent 申请的权限，不能限制它的全部行为。请只启用来源可靠、你愿意信任的扩展。';identity.textContent=`当前代码版本标识 ${data.fingerprint.slice(0,16)}…（扩展更新后，需要重新确认权限）`;
   dialog.append(title,warning,identity,content,button('关闭',()=>dialog.close()));
   async function render(info){clear(content);for(const item of info.scopes){const state=item.override||'未决定';const actions=[];for(const [value,label] of [['allow','允许'],['deny','拒绝'],['ask','每次询问']]){if(value==='allow'&&item.def?.askable===false)continue;actions.push(button(label,async()=>{if(!await confirmAction(`${value==='allow'?'允许':'修改'} ${plugin.id} 的 ${item.scope} 权限？只授权你信任的代码；Node 插件不是沙箱。`))return;const result=await request('POST',path,{scope:item.scope,value,fingerprint:info.fingerprint,confirm:true});await render(result.authorization);}));}content.append(row(item.scope,`${item.def?.desc||''} · ${state}`,actions));}}
   await render(data);installDisposableDialog(dialog);document.body.append(dialog);dialog.showModal();

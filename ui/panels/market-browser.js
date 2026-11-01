@@ -39,7 +39,7 @@ export function bindMarketBrowser({ kind, onInstalled, requestImpl = request, co
     let confirmed = false;
     installing = true;
     try {
-      if (!await confirmImpl(`安装「${item.name || item.id}」？\n\n来源：QQ Agent 在线${label}市场\n版本：${item.version || '未声明'} · 作者：${item.author || '未声明'}\n\n安装后默认停用，不执行代码。请检查来源、设置与权限后显式启用。Node 插件不是沙箱。`)) return;
+      if (!await confirmImpl(`安装「${item.name || item.id}」？\n\n来源：Ni·QQagent 在线${label}市场\n版本：${item.version || '未声明'} · 作者：${item.author || '未声明'}\n\n安装后默认停用，不执行代码。请检查来源、设置与权限后显式启用。Node 插件不是沙箱。`)) return;
       confirmed = true; updateInstallButtons();
       announce(feedback, `正在校验、下载并安装「${item.name || item.id}」…`);
       const result = await requestImpl('POST', '/api/market/install', { id: item.id, kind });

@@ -566,7 +566,7 @@ export function createKernel({
     const active = () => lifecycleActive && epoch === lifecycleGeneration;
     const checkActive = () => { if (!active()) throw new Error('内核启动已取消'); };
     try {
-      log.info(`QQ Agent ${VERSION}（profile=${profile.n}，data=${dataDir}）`);
+      log.info(`Ni·QQagent ${VERSION}（profile=${profile.n}，data=${dataDir}）`);
     // 首启迁移检测（D-4：detect + selfDataEmpty 双闸，0.4 只读导入）
     const mig = components['runtime.migration.detect'](dataDir, env.QQ_AGENT_MIGRATE_FROM ?? null);
     if (mig.eligible) {

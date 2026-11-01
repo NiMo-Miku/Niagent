@@ -1468,9 +1468,9 @@ function resetResult(state, message, backupDir = '') {
     location.append(document.createTextNode('原数据备份：')); text(path, backupDir); path.style.overflowWrap = 'anywhere'; location.append(path); card.append(location);
   }
   if (state === 'accepted') {
-    card.append(empty('请彻底退出并重新启动 QQ Agent，再重新打开控制台。刷新网页不能完成重置或重启应用。'),
-      empty('桌面应用：彻底退出 QQ Agent（仅关窗口可能仍在托盘运行），然后重新启动。'),
-      empty('外部浏览器：先退出并重新启动提供控制台的 QQ Agent 进程，再重新打开控制台。'));
+    card.append(empty('请彻底退出并重新启动 Ni·QQagent，再重新打开控制台。刷新网页不能完成重置或重启应用。'),
+      empty('桌面应用：彻底退出 Ni·QQagent（仅关窗口可能仍在托盘运行），然后重新启动。'),
+      empty('外部浏览器：先退出并重新启动提供控制台的 Ni·QQagent 进程，再重新打开控制台。'));
   }
 }
 function isAcceptedReset(result) {
@@ -1483,7 +1483,7 @@ function applyAcceptedReset(result) {
   form.discard(form.base); invalid.clear(); lockResetForm(true);
   saveLifecycle.sync();
   resetResult('accepted', result.message || '备份和重置申请已提交，请重启应用完成清理。', result.backupDir);
-  report('已接受重置，等待重启完成 · 请重启 QQ Agent');
+  report('已接受重置，等待重启完成 · 请重启 Ni·QQagent');
 }
 function applyResetStatus(result) {
   if (isAcceptedReset(result)) { applyAcceptedReset(result); return; }
@@ -1498,7 +1498,7 @@ function applyResetStatus(result) {
     saveLifecycle.sync();
     if (!resetting) lockResetForm(false);
     resetResult('error', lastResetError || '上次重置未提交，当前实例业务已暂停，请重启恢复；已保存设置可读取，普通设置草稿仍可保存。');
-    report(lastResetError || '上次重置未提交 · 请重启 QQ Agent 恢复业务', true); scheduleSave();
+    report(lastResetError || '上次重置未提交 · 请重启 Ni·QQagent 恢复业务', true); scheduleSave();
   }
 }
 async function resetData() {
@@ -1528,7 +1528,7 @@ async function resetData() {
 const resetAction = bindDestructiveAction($('#reset'), {
   action: resetData, target: () => document.querySelector('main'), clicks: 6, windowTint: true,
   onError:()=>{}, // resetData already preserves the form and reports its error.
-  impact: '将清空全部聊天、记忆、密钥与设置。服务器会先建立原数据备份并提交重置申请，完整清理在下次启动 QQ Agent 时执行；接受后当前表单会锁定，需彻底退出并重启应用。',
+  impact: '将清空全部聊天、记忆、密钥与设置。服务器会先建立原数据备份并提交重置申请，完整清理在下次启动 Ni·QQagent 时执行；接受后当前表单会锁定，需彻底退出并重启应用。',
   canActivate: () => !resetting && !resetPreparing && !resetAccepted && !disposed,
 });
 onBeforeLeave(async () => { if(resetAccepted)return;try{await flushAutoSaves();await blocklistRaw.flushGuard();await saveAll();await blocklistRaw.flushGuard();}catch(error){report(error.message,true);throw error;} });

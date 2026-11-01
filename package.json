@@ -1,11 +1,11 @@
 {
   "name": "qq-agent",
   "version": "0.5.0",
-  "description": "QQ Agent 0.5 —— DSH 薄内核 + 全插件架构（行为等价 0.4，实现从零）",
+  "description": "Ni·QQagent 0.5 —— DSH 薄内核 + 全插件架构（行为等价 0.4，实现从零）",
   "type": "module",
   "main": "src/server.js",
   "license": "MIT",
-  "author": "QQ Agent contributors",
+  "author": "Ni·QQagent contributors",
   "engines": {
     "node": ">=20.0.0"
   },

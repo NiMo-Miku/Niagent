@@ -14,7 +14,7 @@ process.on('uncaughtException', (err) => {
 const kernel = await createApplication({ headless: true });
 
 kernel.start().then((port) => {
-  console.log(`\n  QQ Agent ${kernel.VERSION} · headless`);
+  console.log(`\n  Ni·QQagent ${kernel.VERSION} · headless`);
   console.log(`  控制台：http://127.0.0.1:${port}/\n`);
 
   const shutdown = async (sig) => {

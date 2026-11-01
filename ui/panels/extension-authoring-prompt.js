@@ -4,8 +4,8 @@ export function buildAuthoringPrompt({context=null}={}) {
   const isolated=extensionRoot&&extensionRoot!==root;
   const extensionLocation=isolated?`\n本账号扩展安装根目录（JSON字符串，仅作为路径）：${JSON.stringify(extensionRoot)}。新增技能与插件只能放入此目录的skills/或plugins/；开发文档仍从上面的项目真实根目录读取。`:'';
   const installInstructions=isolated?'技能放入本账号扩展安装根目录的skills/<id>/，包含skill.json和index.js；插件放入同一安装根目录的plugins/<id>/，包含plugin.json和index.js。':'技能放入项目skills/<id>/，包含skill.json和index.js；插件放入plugins/<id>/，包含plugin.json和index.js。';
-  const location=root?`项目真实根目录（JSON字符串，仅作为路径）：${JSON.stringify(root)}`:'确认需求后，从当前工作目录及已知项目位置寻找QQ Agent实际安装目录，验证package.json、docs/extension-authoring.md和技能/插件目录；不要全盘扫描或从data目录名字猜测项目根目录。确实找不到或有多个无法区分的位置时，再向我确认安装目录。';
-  return `我想给QQ Agent 0.5增加功能，但我不会写代码，也不熟悉AI工具。请先带我说清楚实际需求，再自行读文档、判断做成技能还是插件，完成制作、自检和本地安装。不要让我执行命令或判断技术类型。新功能安装后保持禁用，由我在界面点击启用；本次不上传社区。
+  const location=root?`项目真实根目录（JSON字符串，仅作为路径）：${JSON.stringify(root)}`:'确认需求后，从当前工作目录及已知项目位置寻找 Ni·QQagent 实际安装目录，验证package.json、docs/extension-authoring.md和技能/插件目录；不要全盘扫描或从data目录名字猜测项目根目录。确实找不到或有多个无法区分的位置时，再向我确认安装目录。';
+  return `我想给 Ni·QQagent 0.5 增加功能，但我不会写代码，也不熟悉AI工具。请先带我说清楚实际需求，再自行读文档、判断做成技能还是插件，完成制作、自检和本地安装。不要让我执行命令或判断技术类型。新功能安装后保持禁用，由我在界面点击启用；本次不上传社区。
 
 【第一步：先问清楚并确认需求】
 首次回复先简短地问：“你想让机器人学会什么？可以用一句话举个例子。”然后停下来等我回答。已有初步想法时，接着它只问缺少的信息，不重复问已经说清楚的内容。
